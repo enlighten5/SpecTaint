@@ -28,6 +28,23 @@
 	#define smoother 20
 #endif
 
+#ifdef CONFIG_FORCE_EXECUTION
+int force_execution_enabled=0;
+int force_execution_mode=0;
+
+int is_force_range=0;
+int is_exception_range=0;
+int is_program_range=0;
+
+int force_flag=0;
+int restore_flag=0;
+
+target_ulong saved_next_eip;
+target_ulong saved_val;
+
+int verbose = 1;
+#endif
+
 int tb_invalidated_flag;
 
 #if defined(CONFIG_2nd_CCACHE) //sina
@@ -244,6 +261,14 @@ int cpu_exec(CPUState *env)
     lower_band = register_taint_status_check_interval -1 - (register_taint_status_check_interval/smoother);
 
 	#endif
+#endif
+
+#ifdef CONFIG_FORCE_EXECUTION
+    const char *program_name = "test";
+    int pid;
+    uint32_t target_cr3;
+    target_ulong target_env_eip;
+    target_ulong env_eip;
 #endif
     if (env->halted) {
         if (!cpu_has_work(env)) {
@@ -617,6 +642,25 @@ int cpu_exec(CPUState *env)
 
 				//AVB  We poerform our flush here
 				DECAF_perform_flush(env);
+#ifdef CONFIG_FORCE_EXECUTION                
+                //zx012 hook the program and set flags
+                if(force_execution_enabled){
+                    pid = VMI_find_pid_by_name_c(program_name);
+                    target_cr3 = VMI_find_cr3_by_pid_c(pid);
+                    if(target_cr3 == env->cr[3]){
+                        target_env_eip = env->eip;
+                        if(target_env_eip>=0x804841d&&target_env_eip<=0x804848f){
+                            printf("cpu->eip 0x%4x\n", env->eip);
+                            is_force_range = 1;
+                        } else {
+                            is_force_range = 0;
+                        }
+                    } else
+                    {
+                        is_force_range = 0;
+                    }
+                }
+#endif                
 
 
 				
@@ -684,6 +728,29 @@ int cpu_exec(CPUState *env)
                 env->current_tb = NULL;
                 /* reset soft MMU for next block (it can currently
                    only be set by a memory fault) */
+#ifdef CONFIG_FORCE_EXECUTION
+               if(force_flag){
+                   env_eip = env->eip;
+                   if(env_eip==saved_next_eip){
+                       if(verbose){
+                           printf("long jump to: 0x%4x\n", saved_val);
+                       }
+                       env->eip = saved_val;
+                       
+                   } else if(env_eip==saved_val){
+                       if(verbose){
+                           printf("long jump to: 0x%4x\n", saved_next_eip);
+                       }
+                        env->eip = saved_next_eip;
+                   } else
+                   {
+                       printf("Target not match\n");
+                   }
+                   force_flag = 0;
+                   longjmp(env->jmp_env, -1);   
+               }
+#endif
+
 #ifdef CONFIG_TCG_TAINT
 	#if defined(CONFIG_2nd_CCACHE) && defined(TARGET_I386) //sina: check the registers taint status, switch to the safe cache if all the statuses are cleared
 				if ( counter_reg_taint%register_taint_status_check_interval >=lower_band

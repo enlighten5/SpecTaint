@@ -123,3 +123,21 @@ http://code.google.com/p/decaf-platform/
 },
 #endif
 #endif /* CONFIG_TCG_TAINT */
+
+#ifdef CONFIG_FORCE_EXECUTION
+{
+    .name       = "enable_force_execution",
+    .args_type  = "",
+    .params     = "",
+    .help       = "Turn on taint tracking",
+    .mhandler.cmd_new = do_enable_force_execution,
+},
+
+{
+    .name       = "disable_force_execution",
+    .args_type  = "",
+    .params     = "",
+    .help       = "Turn off taint tracking",
+    .mhandler.cmd_new = do_disable_force_execution,
+},
+#endif

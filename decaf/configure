@@ -119,6 +119,8 @@ tcg_ir_log="no"
 #Sina - 2nd code cache disabled by default
 second_code_cache="no"
 opt_shadow_memory="no"
+#zx012 - force execution flag
+force_execution="no"
 bluez=""
 brlapi=""
 curl=""
@@ -837,6 +839,11 @@ for opt do
   ;;
   --disable-opt-smem) opt_shadow_memory="no"
   ;;
+  # zx012 - add force execution flag
+  --enable-force-execution) force_execution="yes"
+  ;;
+  --disable-force-execution) force_execution="no"
+  ;;
   # AWH - VMI support
   --enable-vmi) enable_vmi="yes"
   ;;
@@ -1153,6 +1160,9 @@ echo "  --enable-2nd-ccache      enable 2nd code cache optimization"
 #sina optimize shadow memory operations
 echo "  --disable-opt-smem     disable shadow memory optimization"
 echo "  --enable-opt-smem      enable shadow memory optimization"
+#zx012 force execution moflagde
+echo "  --disable-force-execution disable force execution"
+echo "  --enable-force-execution enable force execution"
 # AWH - VMI enable
 echo "  --disable-vmi            disable VMI support"
 echo "  --enable-vmi             enable VMI support (default)"
@@ -2965,6 +2975,8 @@ echo "enable TCG LLVM   $tcg_llvm"
 echo "enable propagation optimization  $second_code_cache"
 #Sina - shadow memory optimization
 echo "enable shadow memory optimization  $opt_shadow_memory"
+#zx012
+echo "enable force execution mode $force_execution"
 # AWH - VMI
 echo "enable VMI        $enable_vmi"
 
@@ -3024,6 +3036,10 @@ fi
 #Sina - shadow memory optimization
 if test "$opt_shadow_memory" = "yes" ; then
   echo "CONFIG_opt_SMEM=y" >> $config_host_mak
+fi
+#zx012 - Force execution mode
+if test "$force_execution" = "yes" ; then
+  echo "CONFIG_FORCE_EXECUTION=y" >> $config_host_mak
 fi
 #AWH - TCG tainting
 if test "$tcg_taint" = "yes" ; then

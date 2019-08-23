@@ -38,6 +38,10 @@ void do_toggle_kvm(Monitor *mon, const QDict *qdict);
 #ifdef CONFIG_2nd_CCACHE //sina
 void do_2cache_debug(Monitor *mon, const QDict *qdict);
 #endif
+#ifdef CONFIG_FORCE_EXECUTION
+int do_enable_force_execution(Monitor *mon);
+int do_disable_force_execution(Monitor *mon);
+#endif
 void do_print_modules(Monitor *mon);
 void print_loaded_modules(CPUState *env);
 

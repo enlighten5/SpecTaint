@@ -85,3 +85,24 @@ void do_2cache_debug(Monitor *mon, const QDict *qdict) {
 }
 
 #endif
+
+#ifdef CONFIG_FORCE_EXECUTION
+extern int force_execution_enabled;
+int do_enable_force_execution(Monitor *mon){
+    if(!force_execution_enabled){
+        force_execution_enabled = 1;
+        monitor_printf(mon,  "Force execution is now enabled\n");
+    } else {
+        monitor_printf(mon, "Force execution is already enabled\n");
+    }
+    return 0;
+}
+int do_disable_force_execution(Monitor *mon) {
+    if (force_execution_enabled) {
+        force_execution_enabled = 0;
+        monitor_printf(mon, "Force execution is now disabled\n");
+    } else
+        monitor_printf(mon, "Force execution is already disabled\n");
+    return 0;
+}
+#endif

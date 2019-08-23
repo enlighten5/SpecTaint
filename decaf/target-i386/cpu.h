@@ -790,6 +790,23 @@ typedef struct CPUX86State {
     uint64_t xcr0;
 } CPUX86State;
 
+#ifdef CONFIG_FORCE_EXECUTION
+extern int force_execution_enabled;
+extern int force_execution_mode;
+
+extern int is_force_range;
+extern int is_exception_range;
+extern int is_program_range;
+
+extern int force_flag;
+extern int restore_flag;
+
+extern target_ulong saved_next_eip;
+extern target_ulong saved_val;
+
+extern int verbose;
+#endif
+
 CPUX86State *cpu_x86_init(const char *cpu_model);
 int cpu_x86_exec(CPUX86State *s);
 void cpu_x86_close(CPUX86State *s);

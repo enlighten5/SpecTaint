@@ -1186,6 +1186,208 @@ static inline void gen_jcc1(DisasContext *s, int cc_op, int b, int l1)
     }
 }
 
+//zx012
+/* generate a conditional jump to label 'l1' according to jump opcode
+   value 'b'. In the fast case, T0 is guaranted not to be used. */
+static inline void gen_jcc1_cond(DisasContext *s, int cc_op, int b, int l1, TCGCond *condition)
+{
+    int inv, jcc_op, size, cond;
+    TCGv t0;
+
+    inv = b & 1;
+    jcc_op = (b >> 1) & 7;
+
+    switch(cc_op) {
+        /* we optimize the cmp/jcc case */
+        case CC_OP_SUBB:
+        case CC_OP_SUBW:
+        case CC_OP_SUBL:
+        case CC_OP_SUBQ:
+
+            size = cc_op - CC_OP_SUBB;
+            switch(jcc_op) {
+                case JCC_Z:
+                fast_jcc_z:
+                    switch(size) {
+                        case 0:
+                            tcg_gen_andi_tl(cpu_tmp0, cpu_cc_dst, 0xff);
+                            t0 = cpu_tmp0;
+                            break;
+                        case 1:
+                            tcg_gen_andi_tl(cpu_tmp0, cpu_cc_dst, 0xffff);
+                            t0 = cpu_tmp0;
+                            break;
+#ifdef TARGET_X86_64
+                        case 2:
+                tcg_gen_andi_tl(cpu_tmp0, cpu_cc_dst, 0xffffffff);
+                t0 = cpu_tmp0;
+                break;
+#endif
+                        default:
+                            t0 = cpu_cc_dst;
+                            break;
+                    }
+                    tcg_gen_brcondi_tl(inv ? TCG_COND_NE : TCG_COND_EQ, t0, 0, l1);
+                    break;
+                case JCC_S:
+                fast_jcc_s:
+                    switch(size) {
+                        case 0:
+                            tcg_gen_andi_tl(cpu_tmp0, cpu_cc_dst, 0x80);
+                            tcg_gen_brcondi_tl(inv ? TCG_COND_EQ : TCG_COND_NE, cpu_tmp0,
+                                               0, l1);
+                            break;
+                        case 1:
+                            tcg_gen_andi_tl(cpu_tmp0, cpu_cc_dst, 0x8000);
+                            tcg_gen_brcondi_tl(inv ? TCG_COND_EQ : TCG_COND_NE, cpu_tmp0,
+                                               0, l1);
+                            break;
+#ifdef TARGET_X86_64
+                        case 2:
+                tcg_gen_andi_tl(cpu_tmp0, cpu_cc_dst, 0x80000000);
+                tcg_gen_brcondi_tl(inv ? TCG_COND_EQ : TCG_COND_NE, cpu_tmp0,
+                                   0, l1);
+                break;
+#endif
+                        default:
+                            tcg_gen_brcondi_tl(inv ? TCG_COND_GE : TCG_COND_LT, cpu_cc_dst,
+                                               0, l1);
+                            *condition = inv ? TCG_COND_GE : TCG_COND_LT;
+                            break;
+                    }
+                    break;
+
+                case JCC_B:
+                    cond = inv ? TCG_COND_GEU : TCG_COND_LTU;
+                    goto fast_jcc_b;
+                case JCC_BE:
+                    cond = inv ? TCG_COND_GTU : TCG_COND_LEU;
+                fast_jcc_b:
+                    tcg_gen_add_tl(cpu_tmp4, cpu_cc_dst, cpu_cc_src);
+                    switch(size) {
+                        case 0:
+                            t0 = cpu_tmp0;
+                            tcg_gen_andi_tl(cpu_tmp4, cpu_tmp4, 0xff);
+                            tcg_gen_andi_tl(t0, cpu_cc_src, 0xff);
+                            break;
+                        case 1:
+                            t0 = cpu_tmp0;
+                            tcg_gen_andi_tl(cpu_tmp4, cpu_tmp4, 0xffff);
+                            tcg_gen_andi_tl(t0, cpu_cc_src, 0xffff);
+                            break;
+#ifdef TARGET_X86_64
+                        case 2:
+                t0 = cpu_tmp0;
+                tcg_gen_andi_tl(cpu_tmp4, cpu_tmp4, 0xffffffff);
+                tcg_gen_andi_tl(t0, cpu_cc_src, 0xffffffff);
+                break;
+#endif
+                        default:
+                            t0 = cpu_cc_src;
+                            break;
+                    }
+                    tcg_gen_brcond_tl(cond, cpu_tmp4, t0, l1);
+                    *condition = cond;
+                    break;
+
+                case JCC_L:
+                    cond = inv ? TCG_COND_GE : TCG_COND_LT;
+                    goto fast_jcc_l;
+                case JCC_LE:
+                    cond = inv ? TCG_COND_GT : TCG_COND_LE;
+                fast_jcc_l:
+                    tcg_gen_add_tl(cpu_tmp4, cpu_cc_dst, cpu_cc_src);
+                    switch(size) {
+                        case 0:
+                            t0 = cpu_tmp0;
+                            tcg_gen_ext8s_tl(cpu_tmp4, cpu_tmp4);
+                            tcg_gen_ext8s_tl(t0, cpu_cc_src);
+                            break;
+                        case 1:
+                            t0 = cpu_tmp0;
+                            tcg_gen_ext16s_tl(cpu_tmp4, cpu_tmp4);
+                            tcg_gen_ext16s_tl(t0, cpu_cc_src);
+                            break;
+#ifdef TARGET_X86_64
+                        case 2:
+                t0 = cpu_tmp0;
+                tcg_gen_ext32s_tl(cpu_tmp4, cpu_tmp4);
+                tcg_gen_ext32s_tl(t0, cpu_cc_src);
+                break;
+#endif
+                        default:
+                            t0 = cpu_cc_src;
+                            break;
+                    }
+                    tcg_gen_brcond_tl(cond, cpu_tmp4, t0, l1);
+                    *condition = cond;
+                    break;
+
+                default:
+                    goto slow_jcc;
+            }
+            break;
+
+            /* some jumps are easy to compute */
+        case CC_OP_ADDB:
+        case CC_OP_ADDW:
+        case CC_OP_ADDL:
+        case CC_OP_ADDQ:
+
+        case CC_OP_ADCB:
+        case CC_OP_ADCW:
+        case CC_OP_ADCL:
+        case CC_OP_ADCQ:
+
+        case CC_OP_SBBB:
+        case CC_OP_SBBW:
+        case CC_OP_SBBL:
+        case CC_OP_SBBQ:
+
+        case CC_OP_LOGICB:
+        case CC_OP_LOGICW:
+        case CC_OP_LOGICL:
+        case CC_OP_LOGICQ:
+
+        case CC_OP_INCB:
+        case CC_OP_INCW:
+        case CC_OP_INCL:
+        case CC_OP_INCQ:
+
+        case CC_OP_DECB:
+        case CC_OP_DECW:
+        case CC_OP_DECL:
+        case CC_OP_DECQ:
+
+        case CC_OP_SHLB:
+        case CC_OP_SHLW:
+        case CC_OP_SHLL:
+        case CC_OP_SHLQ:
+
+        case CC_OP_SARB:
+        case CC_OP_SARW:
+        case CC_OP_SARL:
+        case CC_OP_SARQ:
+            switch(jcc_op) {
+                case JCC_Z:
+                    size = (cc_op - CC_OP_ADDB) & 3;
+                    goto fast_jcc_z;
+                case JCC_S:
+                    size = (cc_op - CC_OP_ADDB) & 3;
+                    goto fast_jcc_s;
+                default:
+                    goto slow_jcc;
+            }
+            break;
+        default:
+        slow_jcc:
+            gen_setcc_slow_T0(s, jcc_op);
+            tcg_gen_brcondi_tl(inv ? TCG_COND_EQ : TCG_COND_NE,
+                               cpu_T[0], 0, l1);
+            break;
+    }
+}
+
 /* XXX: does not work with gdbstub "ice" single step - not a
    serious problem */
 static int gen_jz_ecx_string(DisasContext *s, target_ulong next_eip)
@@ -2409,12 +2611,22 @@ static inline void gen_jcc(DisasContext *s, int b,
                            target_ulong val, target_ulong next_eip)
 {
     int l1, l2, cc_op;
-
+    TCGv cond;
     cc_op = s->cc_op;
     gen_update_cc_op(s);
     if (s->jmp_opt) {
         l1 = gen_new_label();
-        gen_jcc1(s, cc_op, b, l1);
+        gen_jcc1_cond(s, cc_op, b, l1, &cond);
+        if(is_force_range&&force_execution_enabled){
+            if(cond>=TCG_COND_LT&&cond<=TCG_COND_GTU){
+                if(verbose){
+                    printf("Flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
+                }
+                saved_next_eip = next_eip;
+                saved_val = val;
+                force_flag = 1;
+            }
+        }
 
         gen_goto_tb(s, 0, next_eip);
 
