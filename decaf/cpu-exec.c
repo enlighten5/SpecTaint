@@ -36,6 +36,7 @@ int is_force_range=0;
 int is_exception_range=0;
 int is_program_range=0;
 
+int instruction_counter=0;
 int force_flag=0;
 int restore_flag=0;
 
@@ -43,6 +44,8 @@ target_ulong saved_next_eip;
 target_ulong saved_val;
 
 int verbose = 1;
+
+saved_eip *eip_stack = NULL;
 #endif
 
 int tb_invalidated_flag;
@@ -264,11 +267,15 @@ int cpu_exec(CPUState *env)
 #endif
 
 #ifdef CONFIG_FORCE_EXECUTION
-    const char *program_name = "test";
+    const char *program_name = "wloop";
     int pid;
     uint32_t target_cr3;
     target_ulong target_env_eip;
+    int log_id;
     target_ulong env_eip;
+    if(eip_stack==NULL){
+        eip_stack = initstack();
+    }
 #endif
     if (env->halted) {
         if (!cpu_has_work(env)) {
@@ -649,7 +656,7 @@ int cpu_exec(CPUState *env)
                     target_cr3 = VMI_find_cr3_by_pid_c(pid);
                     if(target_cr3 == env->cr[3]){
                         target_env_eip = env->eip;
-                        if(target_env_eip>=0x804841d&&target_env_eip<=0x804848f){
+                        if(target_env_eip>=0x804841d&&target_env_eip<=0x80484af){
                             printf("cpu->eip 0x%4x\n", env->eip);
                             is_force_range = 1;
                         } else {
@@ -725,29 +732,49 @@ int cpu_exec(CPUState *env)
                         }
                     }
                 }
+                //This may need to change, not only force range
+                if(is_force_range){
+                    tb_phys_invalidate(tb, -1);
+                }
                 env->current_tb = NULL;
                 /* reset soft MMU for next block (it can currently
                    only be set by a memory fault) */
 #ifdef CONFIG_FORCE_EXECUTION
+                if(restore_flag==1){
+                    int log_index;
+                    popeip(eip_stack, env, &log_index);
+                    //FIXME restore mem
+                    if(verbose){
+                        printf("restore to 0x%4x\n", env->eip);
+                    }
+                    restore_flag = 0;
+                    longjmp(env->jmp_env, 1);
+                }
                if(force_flag){
+                   env_eip = env->eip;
+                   CPUX86State *tmp_env =(CPUX86State*)malloc(sizeof(CPUX86State));
+                   memcpy(tmp_env, env, sizeof(CPUX86State));
+                   log_id = 0;//st_log->top;
                    env_eip = env->eip;
                    if(env_eip==saved_next_eip){
                        if(verbose){
                            printf("long jump to: 0x%4x\n", saved_val);
                        }
                        env->eip = saved_val;
+                       pusheip(eip_stack, saved_next_eip, tmp_env, log_id);
                        
                    } else if(env_eip==saved_val){
                        if(verbose){
                            printf("long jump to: 0x%4x\n", saved_next_eip);
                        }
                         env->eip = saved_next_eip;
+                        pusheip(eip_stack, saved_val, tmp_env, log_id);
                    } else
                    {
                        printf("Target not match\n");
                    }
                    force_flag = 0;
-                   longjmp(env->jmp_env, -1);   
+                   longjmp(env->jmp_env, 1);   
                }
 #endif
 

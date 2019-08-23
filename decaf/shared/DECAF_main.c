@@ -84,6 +84,50 @@ mon_cmd_t DECAF_info_cmds[] = {
 int g_bNeedFlush = 0;
 disk_info_t disk_info_internal[5];
 
+
+#ifdef CONFIG_FORCE_EXECUTION
+saved_eip* initstack(void){
+    saved_eip *ret = (saved_eip*)malloc(sizeof(saved_eip));
+    if (ret) {
+        ret->top = 0;
+    }
+    return ret;
+}
+int pusheip(saved_eip *stack, target_ulong eip, CPUX86State *env, int log_id){
+    stack->saved_env[stack->top] = env;
+    stack->eip[stack->top] = eip;
+    stack->num_insns[stack->top] = instruction_counter;
+    stack->logid[stack->top] = log_id;
+    if(verbose)
+        printf("save env->eip 0x%4x env->esp: 0x%4x insn_counter: %d\n", env->eip, env->regs[R_ESP], instruction_counter);
+    stack->top++;
+		if(stack->top==1){
+			force_execution_mode = 1;
+			instruction_counter = 0;
+		}
+    return 1;
+}
+int popeip(saved_eip *stack, CPUX86State *env, int *log_id){
+    if(stack->top == 0){
+        return 0;
+    } else {
+        stack->top--;
+        //*data = stack->eip[stack->top];
+        *log_id = stack->logid[stack->top];
+        CPUX86State *tmp_env = stack->saved_env[stack->top];
+        memcpy(env, tmp_env, sizeof(CPUX86State));
+        instruction_counter = stack->num_insns[stack->top];
+        if(verbose)
+            printf("pop env->eip 0x%4x env->esp: 0x%4x insn_counter: %d\n", env->eip, env->regs[R_ESP], instruction_counter);
+        free(tmp_env);
+				if(stack->top==0){
+					instruction_counter = 0;
+					force_execution_mode = 0;
+				}
+        return 1;
+    }
+}
+#endif
 static gpa_t _DECAF_get_phys_addr(CPUState* env, gva_t addr) {
 	int mmu_idx, index;
 	uint32_t phys_addr;

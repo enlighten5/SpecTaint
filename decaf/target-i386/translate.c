@@ -38,6 +38,10 @@
 #include "shared/tainting/tcg_taint.h"
 #endif /* CONFIG_TCG_TAINT */
 
+#ifdef CONFIG_FORCE_EXECUTION
+#include "shared/DECAF_main.h"
+#endif
+
 #define PREFIX_REPZ   0x01
 #define PREFIX_REPNZ  0x02
 #define PREFIX_LOCK   0x04
@@ -100,7 +104,6 @@ static TCGv eip_taint;
 	extern int second_ccache_flag;
 #endif
 #endif /* CONFIG_TCG_TAINT */
-
 /* local temps */
 static TCGv cpu_T[2], cpu_T3;
 /* local register indexes (only used inside old micro ops) */
@@ -6580,6 +6583,14 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
 
         gen_op_jmp_T0();
         gen_eob(s);
+        if(is_force_range&&force_execution_mode){
+            if(verbose){
+                printf("Ret pc is 0x%4x\n", s->tb->pc);
+            }
+            if(eip_stack->top>0){
+                restore_flag = 1;
+            }
+        }
         break;
     case 0xca: /* lret im */
         val = ldsw_code(s->pc);
@@ -8462,6 +8473,20 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         pc_ptr = disas_insn(dc, pc_ptr);
         num_insns++;
         /* stop translation if indicated */
+        if(is_program_range&&force_execution_mode){
+            instruction_counter++;
+            if(instruction_counter==200){
+#ifdef CONFIG_TCG_TAINT
+                if (taint_tracking_enabled)
+                    lj = optimize_taint(search_pc);
+#endif /* CONFIG_TCG_TAINT */
+                if(verbose)
+                    printf("exceed SEW, set restore flag\n");
+                restore_flag = 1;
+                gen_eob(dc);
+                break;
+            }
+        }
         if (dc->is_jmp)
         {
 #ifdef CONFIG_TCG_LLVM

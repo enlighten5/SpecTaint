@@ -27,7 +27,9 @@ http://code.google.com/p/decaf-platform/
 	#define EXCP12_TNT	39
 	extern int second_ccache_flag;
 #endif
-
+#ifdef CONFIG_FORCE_EXECUTION
+#include "cpu.h"
+#endif
 #include "qemu-common.h"
 #include "monitor.h"
 #include "DECAF_types.h"
@@ -106,7 +108,21 @@ void DECAF_stop_vm(void);
 // Unpause the guest system
 void DECAF_start_vm(void);
 
-
+#ifdef CONFIG_FORCE_EXECUTION
+//Store the pc that need to restore
+typedef struct saved_eip{
+    target_ulong eip[200];
+    target_ulong *saved_env[200];
+    int logid[200];
+    int top;
+    // Number of insns at this point. Change the insn_counter to this when rolling back.
+    int num_insns[200];
+}saved_eip;
+saved_eip* initstack(void);
+int pusheip(saved_eip *stack, target_ulong data, CPUX86State *env, int log_id);
+int popeip(saved_eip *stack, CPUX86State *env, int *log_id);
+extern saved_eip *eip_stack;
+#endif
 /*************************************************************************
  * Functions for accessing the guest's memory
  *************************************************************************/
