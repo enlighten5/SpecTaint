@@ -93,7 +93,7 @@ saved_eip* initstack(void){
     }
     return ret;
 }
-int pusheip(saved_eip *stack, target_ulong eip, CPUX86State *env, int log_id){
+void pusheip(saved_eip *stack, target_ulong eip, CPUX86State *env, int log_id){
     stack->saved_env[stack->top] = env;
     stack->eip[stack->top] = eip;
     stack->num_insns[stack->top] = instruction_counter;
@@ -104,12 +104,14 @@ int pusheip(saved_eip *stack, target_ulong eip, CPUX86State *env, int log_id){
 		if(stack->top==1){
 			force_execution_mode = 1;
 			instruction_counter = 0;
+			if(verbose){
+				printf("set force_excution_mode = 1\n");
+			}
 		}
-    return 1;
 }
-int popeip(saved_eip *stack, CPUX86State *env, int *log_id){
+void popeip(saved_eip *stack, CPUX86State *env, int *log_id){
     if(stack->top == 0){
-        return 0;
+        return;
     } else {
         stack->top--;
         //*data = stack->eip[stack->top];
@@ -123,9 +125,28 @@ int popeip(saved_eip *stack, CPUX86State *env, int *log_id){
 				if(stack->top==0){
 					instruction_counter = 0;
 					force_execution_mode = 0;
+					if(verbose){
+				    printf("set force_excution_mode = 0\n");
+			    }
 				}
-        return 1;
+        return;
     }
+}
+store_log* init_store_log(){
+	store_log *ret = (store_log *)malloc(sizeof(store_log));
+	if(ret){
+		ret->top = 0;
+	}
+	return ret;
+}
+void log_store(store_log *stack, target_ulong vaddr, target_ulong val){
+	stack->addr[stack->top] = vaddr;
+	stack->val[stack->top] = val;
+	stack->top++;
+	if (stack->top>=2000)
+	{
+		printf("Exceed store log size\n");
+	}
 }
 #endif
 static gpa_t _DECAF_get_phys_addr(CPUState* env, gva_t addr) {

@@ -28,6 +28,10 @@ DEF_HELPER_0(DECAF_taint_patch,void)
 DEF_HELPER_0(DECAF_taint_cmpxchg, void)
 #endif /* CONFIG_TCG_TAINT */
 
+#ifdef CONFIG_FORCE_EXECUTION
+DEF_HELPER_1(DECAF_log_store, void, tl)
+#endif
+
 DEF_HELPER_0(lock, void)
 DEF_HELPER_0(unlock, void)
 DEF_HELPER_2(write_eflags, void, tl, i32)

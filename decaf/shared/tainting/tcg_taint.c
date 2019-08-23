@@ -14,8 +14,11 @@
 
 #include "tainting/taint_memory.h"
 #include "config-target.h"
-
 #include "helper.h" // Taint helper functions, plus I386 IN/OUT helpers
+//Add this to solve compile errors. 
+//what's the difference between GEN_HELPER 1 and 2
+#define GEN_HELPER 1
+#include "helper.h"
 #include "DECAF_callback_common.h"
 #include "DECAF_callback_to_QEMU.h"
 
@@ -994,7 +997,11 @@ static inline int gen_taintcheck_insn(int search_pc)
                 tcg_gen_st32_tl(arg0, cpu_env, offsetof(OurCPUState,tempidx));
             } else
               tcg_gen_st32_tl(arg0, cpu_env, offsetof(OurCPUState,tempidx));
-
+            //log the value before store
+            if(is_program_range&&force_execution_mode){
+              printf("log the value before store\n");
+              //gen_helper_DECAF_log_store(addr);
+            }
             /* Insert the taint_qemu_st* IR */
             gen_opc_ptr++;
             gen_opparam_ptr += 3;

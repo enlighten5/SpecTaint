@@ -1033,6 +1033,152 @@ void tcg_dump_ops(TCGContext *s, FILE *outfile)
     }
 }
 
+void tcg_print_ops(TCGContext *s)
+{
+    const uint16_t *opc_ptr;
+    const TCGArg *args;
+    TCGArg arg;
+    TCGOpcode c;
+    int i, k, nb_oargs, nb_iargs, nb_cargs, first_insn;
+    const TCGOpDef *def;
+    char buf[128];
+
+    first_insn = 1;
+    opc_ptr = gen_opc_buf;
+    args = gen_opparam_buf;
+    while (opc_ptr < gen_opc_ptr) {
+        c = *opc_ptr++;
+        def = &tcg_op_defs[c];
+        if (c == INDEX_op_debug_insn_start) {
+            uint64_t pc;
+#if TARGET_LONG_BITS > TCG_TARGET_REG_BITS
+            pc = ((uint64_t)args[1] << 32) | args[0];
+#else
+            pc = args[0];
+#endif
+            if (!first_insn)
+                printf("\n");
+            printf(" ---- 0x%" PRIx64, pc);
+            first_insn = 0;
+            nb_oargs = def->nb_oargs;
+            nb_iargs = def->nb_iargs;
+            nb_cargs = def->nb_cargs;
+        } else if (c == INDEX_op_call) {
+            TCGArg arg;
+
+            /* variable number of arguments */
+            arg = *args++;
+            nb_oargs = arg >> 16;
+            nb_iargs = arg & 0xffff;
+            nb_cargs = def->nb_cargs;
+
+            printf(" %s ", def->name);
+
+            /* function name */
+            printf("%s",
+                    tcg_get_arg_str_idx(s, buf, sizeof(buf), args[nb_oargs + nb_iargs - 1]));
+            /* flags */
+            printf(",$0x%" TCG_PRIlx,
+                    args[nb_oargs + nb_iargs]);
+            /* nb out args */
+            printf(",$%d", nb_oargs);
+            for(i = 0; i < nb_oargs; i++) {
+                printf(",");
+                printf("%s",
+                        tcg_get_arg_str_idx(s, buf, sizeof(buf), args[i]));
+            }
+            for(i = 0; i < (nb_iargs - 1); i++) {
+                printf(",");
+                if (args[nb_oargs + i] == TCG_CALL_DUMMY_ARG) {
+                    printf("<dummy>");
+                } else {
+                    printf("%s",
+                            tcg_get_arg_str_idx(s, buf, sizeof(buf), args[nb_oargs + i]));
+                }
+            }
+        } else if (c == INDEX_op_movi_i32
+#if TCG_TARGET_REG_BITS == 64
+            || c == INDEX_op_movi_i64
+#endif
+                ) {
+            tcg_target_ulong val;
+            TCGHelperInfo *th;
+
+            nb_oargs = def->nb_oargs;
+            nb_iargs = def->nb_iargs;
+            nb_cargs = def->nb_cargs;
+            printf(" %s %s,$", def->name,
+                    tcg_get_arg_str_idx(s, buf, sizeof(buf), args[0]));
+            val = args[1];
+            th = tcg_find_helper(s, val);
+            if (th) {
+                printf("%s", th->name);
+            } else {
+                if (c == INDEX_op_movi_i32)
+                    printf("0x%x", (uint32_t)val);
+                else
+                    printf("0x%" PRIx64 , (uint64_t)val);
+            }
+        } else {
+            printf(" %s ", def->name);
+            if (c == INDEX_op_nopn) {
+                /* variable number of arguments */
+                nb_cargs = *args;
+                nb_oargs = 0;
+                nb_iargs = 0;
+            } else {
+                nb_oargs = def->nb_oargs;
+                nb_iargs = def->nb_iargs;
+                nb_cargs = def->nb_cargs;
+            }
+
+            k = 0;
+            for(i = 0; i < nb_oargs; i++) {
+                if (k != 0)
+                    printf(",");
+                printf("%s",
+                        tcg_get_arg_str_idx(s, buf, sizeof(buf), args[k++]));
+            }
+            for(i = 0; i < nb_iargs; i++) {
+                if (k != 0)
+                    printf(",");
+                printf("%s",
+                        tcg_get_arg_str_idx(s, buf, sizeof(buf), args[k++]));
+            }
+            switch (c) {
+                case INDEX_op_brcond_i32:
+#if TCG_TARGET_REG_BITS == 32
+                case INDEX_op_brcond2_i32:
+#elif TCG_TARGET_REG_BITS == 64
+                    case INDEX_op_brcond_i64:
+#endif
+                case INDEX_op_setcond_i32:
+#if TCG_TARGET_REG_BITS == 32
+                case INDEX_op_setcond2_i32:
+#elif TCG_TARGET_REG_BITS == 64
+                    case INDEX_op_setcond_i64:
+#endif
+                    if (args[k] < ARRAY_SIZE(cond_name) && cond_name[args[k]])
+                        printf(",%s", cond_name[args[k++]]);
+                    else
+                        printf(",$0x%" TCG_PRIlx, args[k++]);
+                    i = 1;
+                    break;
+                default:
+                    i = 0;
+                    break;
+            }
+            for(; i < nb_cargs; i++) {
+                if (k != 0)
+                    printf(",");
+                arg = args[k++];
+                printf("$0x%" TCG_PRIlx, arg);
+            }
+        }
+        printf("\n");
+        args += nb_iargs + nb_oargs + nb_cargs;
+    }
+}
 /* we give more priority to constraints with less registers */
 static int get_constraint_priority(const TCGOpDef *def, int k)
 {

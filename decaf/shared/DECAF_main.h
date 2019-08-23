@@ -27,9 +27,6 @@ http://code.google.com/p/decaf-platform/
 	#define EXCP12_TNT	39
 	extern int second_ccache_flag;
 #endif
-#ifdef CONFIG_FORCE_EXECUTION
-#include "cpu.h"
-#endif
 #include "qemu-common.h"
 #include "monitor.h"
 #include "DECAF_types.h"
@@ -38,6 +35,24 @@ http://code.google.com/p/decaf-platform/
 #ifndef DECAF_MAIN_H_
 #define DECAF_MAIN_H_
 
+#ifdef CONFIG_FORCE_EXECUTION
+extern int force_execution_enabled;
+extern int force_execution_mode;
+
+extern int is_force_range;
+extern int is_exception_range;
+extern int is_program_range;
+
+extern int force_flag;
+extern int restore_flag;
+extern int instruction_counter;
+
+extern target_ulong saved_next_eip;
+extern target_ulong saved_val;
+
+extern int verbose;
+
+#endif
 
 #ifdef __cplusplus
 extern "C"
@@ -119,9 +134,19 @@ typedef struct saved_eip{
     int num_insns[200];
 }saved_eip;
 saved_eip* initstack(void);
-int pusheip(saved_eip *stack, target_ulong data, CPUX86State *env, int log_id);
-int popeip(saved_eip *stack, CPUX86State *env, int *log_id);
+void pusheip(saved_eip *stack, target_ulong data, CPUX86State *env, int log_id);
+void popeip(saved_eip *stack, CPUX86State *env, int *log_id);
 extern saved_eip *eip_stack;
+
+//mem restore
+typedef struct store_log{
+    target_ulong addr[2000];
+    target_ulong val[2000];
+    int top;
+}store_log;
+store_log* init_store_log();
+void log_store(store_log *stack, target_ulong vaddr, target_ulong val);
+extern store_log *st_log;
 #endif
 /*************************************************************************
  * Functions for accessing the guest's memory

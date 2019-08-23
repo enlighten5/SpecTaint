@@ -1482,12 +1482,19 @@ static void QEMU_NORETURN raise_interrupt(int intno, int is_int, int error_code,
     } else {
         helper_svm_check_intercept_param(SVM_EXIT_SWINT, 0);
     }
-
-    env->exception_index = intno;
-    env->error_code = error_code;
-    env->exception_is_int = is_int;
-    env->exception_next_eip = env->eip + next_eip_addend;
-    cpu_loop_exit(env);
+    if(is_exception_range&&force_execution_mode&&(intno!=14)){
+        if(verbose){
+            printf("Do not raise interrupt in transient mode\n");
+        }
+        env->exception_index = 40;
+        cpu_loop_exit(env);
+    } else {
+        env->exception_index = intno;
+        env->error_code = error_code;
+        env->exception_is_int = is_int;
+        env->exception_next_eip = env->eip + next_eip_addend;
+        cpu_loop_exit(env);
+    }
 }
 
 /* shortcuts to generate exceptions */
@@ -5987,3 +5994,15 @@ void helper_DECAF_update_fpu(void)
 	cpu_single_env->fpip_t = cpu_single_env->eip;
 	cpu_single_env->fpcs_t = cpu_single_env->segs[R_CS].selector;
 }
+
+#ifdef CONFIG_FORCE_EXECUTION
+void helper_DECAF_log_store(target_ulong addr){
+    //FIXME what size should it be?
+    uint32_t val;
+    DECAF_read_mem(env, addr, 4, &val);
+    if(verbose){
+     //   printf("store 0x%4x at addr: 0x%4x\n", val, addr);
+    }
+    log_store(st_log, addr, val);
+}
+#endif

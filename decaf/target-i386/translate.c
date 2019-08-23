@@ -614,6 +614,10 @@ static inline void gen_op_ld_T1_A0(int idx)
 static inline void gen_op_st_v(int idx, TCGv t0, TCGv a0)
 {
     int mem_index = (idx >> 2) - 1;
+    if(is_program_range&&force_execution_mode){
+        //printf("log the value before store\n");
+        gen_helper_DECAF_log_store(a0);
+    }
     switch(idx & 3) {
     case 0:
         tcg_gen_qemu_st8(t0, a0, mem_index);
@@ -2622,12 +2626,16 @@ static inline void gen_jcc(DisasContext *s, int b,
         gen_jcc1_cond(s, cc_op, b, l1, &cond);
         if(is_force_range&&force_execution_enabled){
             if(cond>=TCG_COND_LT&&cond<=TCG_COND_GTU){
+                if(rand()%2==0){
+
+                } else {
                 if(verbose){
                     printf("Flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
                 }
                 saved_next_eip = next_eip;
                 saved_val = val;
                 force_flag = 1;
+                }
             }
         }
 

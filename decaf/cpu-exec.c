@@ -46,6 +46,7 @@ target_ulong saved_val;
 int verbose = 1;
 
 saved_eip *eip_stack = NULL;
+store_log *st_log = NULL;
 #endif
 
 int tb_invalidated_flag;
@@ -276,6 +277,9 @@ int cpu_exec(CPUState *env)
     if(eip_stack==NULL){
         eip_stack = initstack();
     }
+    if(st_log==NULL){
+        st_log = init_store_log();
+    }
 #endif
     if (env->halted) {
         if (!cpu_has_work(env)) {
@@ -330,6 +334,14 @@ int cpu_exec(CPUState *env)
         if (setjmp(env->jmp_env) == 0) {
             /* if an exception is pending, we execute it here */
             if (env->exception_index >= 0) {
+                if(env->exception_index==40){
+                    if(verbose){
+                        printf("Exception at 0x%4x in transient mode, restore\n", env->eip);
+                    }
+                    env->exception_index = -1;
+                    restore_flag = 1;
+                    goto restore_state;
+                }
                 if (env->exception_index >= EXCP_INTERRUPT) {
                     /* exit request from the cpu execution loop */
                     ret = env->exception_index;
@@ -656,15 +668,29 @@ int cpu_exec(CPUState *env)
                     target_cr3 = VMI_find_cr3_by_pid_c(pid);
                     if(target_cr3 == env->cr[3]){
                         target_env_eip = env->eip;
-                        if(target_env_eip>=0x804841d&&target_env_eip<=0x80484af){
-                            printf("cpu->eip 0x%4x\n", env->eip);
+                        if(target_env_eip>=0x804841d&&target_env_eip<=0x804848f){
+                            if(verbose){
+                                printf("cpu->eip 0x%4x\n", env->eip);
+                            }                          
                             is_force_range = 1;
                         } else {
                             is_force_range = 0;
                         }
+                        if(target_env_eip>=0x804841d&&target_env_eip<=0x804848f){
+                            is_exception_range = 1;
+                        } else {
+                            is_exception_range = 0;
+                        }
+                        if(target_env_eip>=0x80482b4&&target_env_eip<=0x8048517){
+                            is_program_range = 1;
+                        } else {
+                            is_program_range = 0;
+                        }
                     } else
                     {
                         is_force_range = 0;
+                        is_exception_range = 0;
+                        is_program_range = 0;
                     }
                 }
 #endif                
@@ -740,21 +766,30 @@ int cpu_exec(CPUState *env)
                 /* reset soft MMU for next block (it can currently
                    only be set by a memory fault) */
 #ifdef CONFIG_FORCE_EXECUTION
+                restore_state:
                 if(restore_flag==1){
                     int log_index;
                     popeip(eip_stack, env, &log_index);
                     //FIXME restore mem
+                    for(int i=st_log->top;i>=log_index;i--){
+                        uint32_t tmp_val = st_log->val[i];
+                        DECAF_write_mem(env, st_log->addr[i], 4, &tmp_val);
+                        if(verbose){
+                            //printf("Write 0x%4x to addr 0x%4x\n", tmp_val, st_log->addr[i]);
+                        }
+                    }
+                    st_log->top = log_index;
                     if(verbose){
                         printf("restore to 0x%4x\n", env->eip);
                     }
                     restore_flag = 0;
                     longjmp(env->jmp_env, 1);
                 }
-               if(force_flag){
+                if(force_flag){
                    env_eip = env->eip;
                    CPUX86State *tmp_env =(CPUX86State*)malloc(sizeof(CPUX86State));
                    memcpy(tmp_env, env, sizeof(CPUX86State));
-                   log_id = 0;//st_log->top;
+                   log_id = st_log->top;
                    env_eip = env->eip;
                    if(env_eip==saved_next_eip){
                        if(verbose){
@@ -775,7 +810,7 @@ int cpu_exec(CPUState *env)
                    }
                    force_flag = 0;
                    longjmp(env->jmp_env, 1);   
-               }
+                }
 #endif
 
 #ifdef CONFIG_TCG_TAINT
