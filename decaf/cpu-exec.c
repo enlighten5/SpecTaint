@@ -33,6 +33,7 @@ int force_execution_enabled=0;
 int force_execution_mode=0;
 
 int is_force_range=0;
+int is_main_range=0;
 int is_exception_range=0;
 int is_program_range=0;
 
@@ -47,6 +48,8 @@ int verbose = 1;
 
 saved_eip *eip_stack = NULL;
 store_log *st_log = NULL;
+
+int branch_count=0;
 #endif
 
 int tb_invalidated_flag;
@@ -268,7 +271,7 @@ int cpu_exec(CPUState *env)
 #endif
 
 #ifdef CONFIG_FORCE_EXECUTION
-    const char *program_name = "wloop";
+    const char *program_name = "func";
     int pid;
     uint32_t target_cr3;
     target_ulong target_env_eip;
@@ -668,7 +671,7 @@ int cpu_exec(CPUState *env)
                     target_cr3 = VMI_find_cr3_by_pid_c(pid);
                     if(target_cr3 == env->cr[3]){
                         target_env_eip = env->eip;
-                        if(target_env_eip>=0x804841d&&target_env_eip<=0x804848f){
+                        if(target_env_eip>=0x804841d&&target_env_eip<=0x804849e){
                             if(verbose){
                                 printf("cpu->eip 0x%4x\n", env->eip);
                             }                          
@@ -676,7 +679,14 @@ int cpu_exec(CPUState *env)
                         } else {
                             is_force_range = 0;
                         }
-                        if(target_env_eip>=0x804841d&&target_env_eip<=0x804848f){
+                        if(target_env_eip>=0x804845b&&target_env_eip<=0x804849e){
+                            is_main_range = 1;
+                        } else
+                        {
+                            is_main_range = 0;
+                        }
+                        
+                        if(target_env_eip>=0x804841d&&target_env_eip<=0x804849e){
                             is_exception_range = 1;
                         } else {
                             is_exception_range = 0;
@@ -806,7 +816,9 @@ int cpu_exec(CPUState *env)
                         pusheip(eip_stack, saved_val, tmp_env, log_id);
                    } else
                    {
+                       if(verbose){
                        printf("Target not match\n");
+                       }
                    }
                    force_flag = 0;
                    longjmp(env->jmp_env, 1);   

@@ -40,6 +40,7 @@ extern int force_execution_enabled;
 extern int force_execution_mode;
 
 extern int is_force_range;
+extern int is_main_range;
 extern int is_exception_range;
 extern int is_program_range;
 

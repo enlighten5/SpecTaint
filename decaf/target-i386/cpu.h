@@ -795,6 +795,7 @@ extern int force_execution_enabled;
 extern int force_execution_mode;
 
 extern int is_force_range;
+extern int is_main_range;
 extern int is_exception_range;
 extern int is_program_range;
 
@@ -807,6 +808,7 @@ extern target_ulong saved_val;
 
 extern int verbose;
 
+extern int branch_count;
 #endif
 
 CPUX86State *cpu_x86_init(const char *cpu_model);

@@ -98,15 +98,15 @@ void pusheip(saved_eip *stack, target_ulong eip, CPUX86State *env, int log_id){
     stack->eip[stack->top] = eip;
     stack->num_insns[stack->top] = instruction_counter;
     stack->logid[stack->top] = log_id;
-    if(verbose)
-        printf("save env->eip 0x%4x env->esp: 0x%4x insn_counter: %d\n", env->eip, env->regs[R_ESP], instruction_counter);
     stack->top++;
+		if(verbose)
+        printf("save env->eip 0x%4x env->esp: 0x%4x insn_counter: %d, stack top: %d\n", env->eip, env->regs[R_ESP], instruction_counter, stack->top);
 		if(stack->top==1){
 			force_execution_mode = 1;
 			instruction_counter = 0;
-			if(verbose){
-				printf("set force_excution_mode = 1\n");
-			}
+		}
+		if(stack->top>=200){
+			printf("Exceed eip stack size\n");
 		}
 }
 void popeip(saved_eip *stack, CPUX86State *env, int *log_id){
@@ -120,14 +120,11 @@ void popeip(saved_eip *stack, CPUX86State *env, int *log_id){
         memcpy(env, tmp_env, sizeof(CPUX86State));
         instruction_counter = stack->num_insns[stack->top];
         if(verbose)
-            printf("pop env->eip 0x%4x env->esp: 0x%4x insn_counter: %d\n", env->eip, env->regs[R_ESP], instruction_counter);
+            printf("pop env->eip 0x%4x env->esp: 0x%4x insn_counter: %d, stack top: %d\n", env->eip, env->regs[R_ESP], instruction_counter, stack->top);
         free(tmp_env);
 				if(stack->top==0){
 					instruction_counter = 0;
 					force_execution_mode = 0;
-					if(verbose){
-				    printf("set force_excution_mode = 0\n");
-			    }
 				}
         return;
     }

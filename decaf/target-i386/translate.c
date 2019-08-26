@@ -2626,12 +2626,16 @@ static inline void gen_jcc(DisasContext *s, int b,
         gen_jcc1_cond(s, cc_op, b, l1, &cond);
         if(is_force_range&&force_execution_enabled){
             if(cond>=TCG_COND_LT&&cond<=TCG_COND_GTU){
-                if(rand()%2==0){
-
+                if(0/*rand()%2==0*/){
+                    if(verbose){
+                    printf("Do not flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
+                }
+                    //branch_count++;
                 } else {
                 if(verbose){
                     printf("Flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
                 }
+                //branch_count++;
                 saved_next_eip = next_eip;
                 saved_val = val;
                 force_flag = 1;
@@ -6591,7 +6595,7 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
 
         gen_op_jmp_T0();
         gen_eob(s);
-        if(is_force_range&&force_execution_mode){
+        if(is_main_range&&force_execution_mode){
             if(verbose){
                 printf("Ret pc is 0x%4x\n", s->tb->pc);
             }
@@ -8483,7 +8487,7 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         /* stop translation if indicated */
         if(is_program_range&&force_execution_mode){
             instruction_counter++;
-            if(instruction_counter==200){
+            if(instruction_counter==10){
 #ifdef CONFIG_TCG_TAINT
                 if (taint_tracking_enabled)
                     lj = optimize_taint(search_pc);
