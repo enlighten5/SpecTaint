@@ -575,6 +575,13 @@ static inline void gen_op_lds_T0_A0(int idx)
 static inline void gen_op_ld_v(int idx, TCGv t0, TCGv a0)
 {
     int mem_index = (idx >> 2) - 1;
+    if(is_program_range){
+        if(force_execution_mode){
+            //if it does not work here, add it at translate.c
+            //printf("Add DECAF_detect on load in gen_op_ld_v\n");
+            gen_helper_DECAF_detect(a0);
+        }
+    }
     switch(idx & 3) {
     case 0:
         tcg_gen_qemu_ld8u(t0, a0, mem_index);
@@ -1651,6 +1658,9 @@ static void gen_op(DisasContext *s1, int op, int ot, int d)
         s1->cc_op = CC_OP_LOGICB + ot;
         break;
     case OP_CMPL:
+        if(is_force_range&&taint_tracking_enabled){
+            gen_helper_DECAF_taint_mem(cpu_A0);
+        }
         gen_op_cmpl_T0_T1_cc();
         s1->cc_op = CC_OP_SUBB + ot;
         break;
@@ -2626,7 +2636,7 @@ static inline void gen_jcc(DisasContext *s, int b,
         gen_jcc1_cond(s, cc_op, b, l1, &cond);
         if(is_force_range&&force_execution_enabled){
             if(cond>=TCG_COND_LT&&cond<=TCG_COND_GTU){
-                if(0/*rand()%2==0*/){
+                if(rand()%2==0){
                     if(verbose){
                     printf("Do not flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
                 }
@@ -6595,7 +6605,7 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
 
         gen_op_jmp_T0();
         gen_eob(s);
-        if(is_main_range&&force_execution_mode){
+        if(is_force_range&&force_execution_mode){
             if(verbose){
                 printf("Ret pc is 0x%4x\n", s->tb->pc);
             }
@@ -8487,7 +8497,7 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         /* stop translation if indicated */
         if(is_program_range&&force_execution_mode){
             instruction_counter++;
-            if(instruction_counter==10){
+            if(instruction_counter==20){
 #ifdef CONFIG_TCG_TAINT
                 if (taint_tracking_enabled)
                     lj = optimize_taint(search_pc);

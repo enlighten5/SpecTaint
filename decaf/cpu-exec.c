@@ -44,7 +44,7 @@ int restore_flag=0;
 target_ulong saved_next_eip;
 target_ulong saved_val;
 
-int verbose = 1;
+int verbose = 0;
 
 saved_eip *eip_stack = NULL;
 store_log *st_log = NULL;
@@ -271,7 +271,7 @@ int cpu_exec(CPUState *env)
 #endif
 
 #ifdef CONFIG_FORCE_EXECUTION
-    const char *program_name = "func";
+    const char *program_name = "testcrypto";
     int pid;
     uint32_t target_cr3;
     target_ulong target_env_eip;
@@ -338,7 +338,7 @@ int cpu_exec(CPUState *env)
             /* if an exception is pending, we execute it here */
             if (env->exception_index >= 0) {
                 if(env->exception_index==40){
-                    if(verbose){
+                    if(1){
                         printf("Exception at 0x%4x in transient mode, restore\n", env->eip);
                     }
                     env->exception_index = -1;
@@ -671,7 +671,7 @@ int cpu_exec(CPUState *env)
                     target_cr3 = VMI_find_cr3_by_pid_c(pid);
                     if(target_cr3 == env->cr[3]){
                         target_env_eip = env->eip;
-                        if(target_env_eip>=0x804841d&&target_env_eip<=0x804849e){
+                        if(target_env_eip>=0x80690f0&&target_env_eip<=0x8069e01){
                             if(verbose){
                                 printf("cpu->eip 0x%4x\n", env->eip);
                             }                          
@@ -679,19 +679,19 @@ int cpu_exec(CPUState *env)
                         } else {
                             is_force_range = 0;
                         }
-                        if(target_env_eip>=0x804845b&&target_env_eip<=0x804849e){
+                        if(target_env_eip>=0x806ccbf&&target_env_eip<=0x806d789){
                             is_main_range = 1;
                         } else
                         {
                             is_main_range = 0;
                         }
                         
-                        if(target_env_eip>=0x804841d&&target_env_eip<=0x804849e){
+                        if(target_env_eip>=0x80690f0&&target_env_eip<=0x806d789){
                             is_exception_range = 1;
                         } else {
                             is_exception_range = 0;
                         }
-                        if(target_env_eip>=0x80482b4&&target_env_eip<=0x8048517){
+                        if(target_env_eip>=0x80481b8&&target_env_eip<=0x80f3fcb){
                             is_program_range = 1;
                         } else {
                             is_program_range = 0;

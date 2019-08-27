@@ -36,8 +36,8 @@ int ccache_debug = 0; //sina
 #endif
 int taint_nic_enabled = 0;
 int taint_pointers_enabled = 0;
-int taint_load_pointers_enabled = 0;
-int taint_store_pointers_enabled = 0;
+int taint_load_pointers_enabled = 1;
+int taint_store_pointers_enabled = 1;
 
 /* Root node for holding memory taint information */
 tbitpage_middle_t **taint_memory_page_table = NULL;

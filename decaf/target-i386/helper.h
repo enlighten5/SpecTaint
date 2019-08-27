@@ -30,6 +30,9 @@ DEF_HELPER_0(DECAF_taint_cmpxchg, void)
 
 #ifdef CONFIG_FORCE_EXECUTION
 DEF_HELPER_1(DECAF_log_store, void, tl)
+DEF_HELPER_1(DECAF_detect, void,tl)
+DEF_HELPER_1(DECAF_taint_mem, void, tl)
+DEF_HELPER_2(DECAF_check_taint, void, tl, tl)
 #endif
 
 DEF_HELPER_0(lock, void)

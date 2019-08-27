@@ -882,6 +882,7 @@ static inline int gen_taintcheck_insn(int search_pc)
             arg1 = find_shadow_arg(gen_opparam_ptr[-2]);
             //int addr = gen_opparam_ptr[-2];
             if (arg1) {
+              int addr = gen_opparam_ptr[-2];
 
 #if (TCG_TARGET_REG_BITS == 64)
               t0 = tcg_temp_new_i64();
@@ -929,6 +930,14 @@ static inline int gen_taintcheck_insn(int search_pc)
               /* Combine pointer and tempidx taint */
               tcg_gen_or_i32(arg0, t0, tempidx);
 #endif /* TARGET_REG_BITS */
+
+            if(is_program_range){
+              if(force_execution_mode){
+                //if it does not work here, add it at translate.c
+                //printf("Add DECAF_detect on load in tcg_taint.c\n");
+                //gen_helper_DECAF_detect(addr);
+              }
+            }
             } else
               /* Patch in opcode to load taint from tempidx */
               tcg_gen_mov_tl(arg0, tempidx);
@@ -997,11 +1006,6 @@ static inline int gen_taintcheck_insn(int search_pc)
                 tcg_gen_st32_tl(arg0, cpu_env, offsetof(OurCPUState,tempidx));
             } else
               tcg_gen_st32_tl(arg0, cpu_env, offsetof(OurCPUState,tempidx));
-            //log the value before store
-            if(is_program_range&&force_execution_mode){
-              printf("log the value before store\n");
-              //gen_helper_DECAF_log_store(addr);
-            }
             /* Insert the taint_qemu_st* IR */
             gen_opc_ptr++;
             gen_opparam_ptr += 3;
@@ -1511,6 +1515,17 @@ static inline int gen_taintcheck_insn(int search_pc)
           tcg_gen_or_i32(arg0, t0, t1); // arg0 = (qa | qb) | ( (a_min + b_min) ^ (a_max + b_max)
           //put the original operation back
           tcg_gen_add_i32(orig0, orig1, orig2);
+          if(is_program_range){
+            if(force_execution_mode){
+              t_zero = tcg_temp_new_i32();
+              tcg_gen_movi_i32(t_zero, 0);
+              tcg_gen_setcond_i32(TCG_COND_NE, t0, arg1, t_zero);
+              tcg_gen_setcond_i32(TCG_COND_NE, t1, arg2, t_zero);
+              t5 = tcg_temp_new_i32();
+              tcg_gen_or_i32(t5, t0, t1);
+              gen_helper_DECAF_check_taint(t5, orig0);
+            }
+          }
         }
         break;
       /* T0 = (T1 | T2) | ((V1_min - V2_max) ^ (V1_max - V2_min)) */
