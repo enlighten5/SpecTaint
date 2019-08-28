@@ -6020,10 +6020,13 @@ void helper_DECAF_detect(target_ulong vaddr){
         
     }
 }
+int taint_count = 0;
 void helper_DECAF_taint_mem(target_ulong vaddr){
     //printf("taint vaddr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
-    uint8_t taint = 0xff;
-    taintcheck_taint_virtmem(vaddr, 4, &taint);
+    if(1/*store_queue_add(tainted_address_q, vaddr)*/){
+        uint8_t taint = 0xff;
+        taintcheck_taint_virtmem(vaddr, 4, &taint); 
+    }
 }
 void helper_DECAF_check_taint(target_ulong val, target_ulong vaddr){
     if(val==0x1){

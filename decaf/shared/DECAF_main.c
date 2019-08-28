@@ -86,6 +86,7 @@ disk_info_t disk_info_internal[5];
 
 
 #ifdef CONFIG_FORCE_EXECUTION
+//This is used to save the restore pc
 saved_eip* initstack(void){
     saved_eip *ret = (saved_eip*)malloc(sizeof(saved_eip));
     if (ret) {
@@ -129,6 +130,7 @@ void popeip(saved_eip *stack, CPUX86State *env, int *log_id){
         return;
     }
 }
+//This is used to store the mem modification
 store_log* init_store_log(){
 	store_log *ret = (store_log *)malloc(sizeof(store_log));
 	if(ret){
@@ -140,10 +142,54 @@ void log_store(store_log *stack, target_ulong vaddr, target_ulong val){
 	stack->addr[stack->top] = vaddr;
 	stack->val[stack->top] = val;
 	stack->top++;
-	if (stack->top>=2000)
+	if (stack->top>=20000)
 	{
 		printf("Exceed store log size\n");
 	}
+}
+
+store_queue* init_store_queue(){
+	store_queue *ret = (store_queue*)malloc(sizeof(store_queue));
+	if(ret){
+		ret->front = -1;
+		ret->rear = -1;
+		ret->size = 0;
+	}
+	return ret;
+}
+void store_queue_remove(store_queue *queue){
+	if (queue->size!=0)
+	{
+		queue->front++;
+		queue->front %= 200;
+		queue->size--;
+	}
+}
+int store_queue_add(store_queue *queue, target_ulong vaddr){
+	if(queue->size>200){
+		store_queue_remove(queue);
+	}
+	int index = queue->front;
+	int i;
+	for(i=0;i<queue->size;++i){
+		index++;
+		index %= 200;
+		if(queue->addr[index]==vaddr){
+			queue->count[index]++;
+			if(queue->count[index]>3){
+				return 0;
+			} else {
+				return 1;
+			}
+		}
+	}
+
+	queue->rear++;
+	queue->rear %= 200;
+	queue->size++;
+	queue->addr[queue->rear] = vaddr;
+	queue->count[queue->rear] = 0;
+	return 1;
 }
 #endif
 static gpa_t _DECAF_get_phys_addr(CPUState* env, gva_t addr) {

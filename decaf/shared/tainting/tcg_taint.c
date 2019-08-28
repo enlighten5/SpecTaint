@@ -931,7 +931,7 @@ static inline int gen_taintcheck_insn(int search_pc)
               tcg_gen_or_i32(arg0, t0, tempidx);
 #endif /* TARGET_REG_BITS */
 
-            if(is_program_range){
+            if(is_force_range){
               if(force_execution_mode){
                 //if it does not work here, add it at translate.c
                 //printf("Add DECAF_detect on load in tcg_taint.c\n");

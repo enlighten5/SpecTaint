@@ -141,13 +141,28 @@ extern saved_eip *eip_stack;
 
 //mem restore
 typedef struct store_log{
-    target_ulong addr[2000];
-    target_ulong val[2000];
+    target_ulong addr[20000];
+    target_ulong val[20000];
     int top;
 }store_log;
 store_log* init_store_log();
 void log_store(store_log *stack, target_ulong vaddr, target_ulong val);
 extern store_log *st_log;
+
+//Queue
+typedef struct store_queue{
+  target_ulong addr[200];
+  int count[200];
+  int front;
+  int rear;
+  int size;
+}store_queue;
+store_queue* init_store_queue();
+void store_queue_remove(store_queue *queue);
+int store_queue_add(store_queue *queue, target_ulong vaddr);
+extern store_queue *tainted_address_q;
+extern store_queue *forced_branch;
+
 #endif
 /*************************************************************************
  * Functions for accessing the guest's memory

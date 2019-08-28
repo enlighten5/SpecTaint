@@ -571,11 +571,10 @@ static inline void gen_op_lds_T0_A0(int idx)
         break;
     }
 }
-
 static inline void gen_op_ld_v(int idx, TCGv t0, TCGv a0)
 {
     int mem_index = (idx >> 2) - 1;
-    if(is_program_range){
+    if(is_force_range&&taint_tracking_enabled){
         if(force_execution_mode){
             //if it does not work here, add it at translate.c
             //printf("Add DECAF_detect on load in gen_op_ld_v\n");
@@ -1567,7 +1566,7 @@ static void gen_helper_fp_arith_STN_ST0(int op, int opreg)
     case 7: gen_helper_fdiv_STN_ST0(tmp); break;
     }
 }
-
+int debug_count=0;
 /* if d == OR_TMP0, it means memory operand (address in A0) */
 static void gen_op(DisasContext *s1, int op, int ot, int d)
 {
@@ -1658,8 +1657,11 @@ static void gen_op(DisasContext *s1, int op, int ot, int d)
         s1->cc_op = CC_OP_LOGICB + ot;
         break;
     case OP_CMPL:
-        if(is_force_range&&taint_tracking_enabled){
-            gen_helper_DECAF_taint_mem(cpu_A0);
+        if(is_force_range&&taint_tracking_enabled){  
+            if(d == OR_TMP0){
+                //printf("debug_count: %d\n", debug_count++);
+                gen_helper_DECAF_taint_mem(cpu_A0);
+            }
         }
         gen_op_cmpl_T0_T1_cc();
         s1->cc_op = CC_OP_SUBB + ot;
@@ -2636,10 +2638,20 @@ static inline void gen_jcc(DisasContext *s, int b,
         gen_jcc1_cond(s, cc_op, b, l1, &cond);
         if(is_force_range&&force_execution_enabled){
             if(cond>=TCG_COND_LT&&cond<=TCG_COND_GTU){
+                /*if(store_queue_add(forced_branch, s->tb->pc)){
+                   if(verbose){
+                    printf("Flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
+                    }
+                    //branch_count++;
+                    saved_next_eip = next_eip;
+                    saved_val = val;
+                    force_flag = 1; 
+                }*/
+
                 if(rand()%2==0){
                     if(verbose){
                     printf("Do not flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
-                }
+                    }
                     //branch_count++;
                 } else {
                 if(verbose){

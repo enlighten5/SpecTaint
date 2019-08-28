@@ -48,6 +48,8 @@ int verbose = 0;
 
 saved_eip *eip_stack = NULL;
 store_log *st_log = NULL;
+store_queue *tainted_address_q = NULL;
+store_queue *forced_branch = NULL;
 
 int branch_count=0;
 #endif
@@ -282,6 +284,12 @@ int cpu_exec(CPUState *env)
     }
     if(st_log==NULL){
         st_log = init_store_log();
+    }
+    if(tainted_address_q==NULL){
+        tainted_address_q = init_store_queue();
+    }
+    if(forced_branch==NULL){
+        forced_branch = init_store_queue();
     }
 #endif
     if (env->halted) {
@@ -671,7 +679,7 @@ int cpu_exec(CPUState *env)
                     target_cr3 = VMI_find_cr3_by_pid_c(pid);
                     if(target_cr3 == env->cr[3]){
                         target_env_eip = env->eip;
-                        if(target_env_eip>=0x80690f0&&target_env_eip<=0x8069e01){
+                        if(target_env_eip>=0x8069e02&&target_env_eip<=0x806ad98){
                             if(verbose){
                                 printf("cpu->eip 0x%4x\n", env->eip);
                             }                          
@@ -691,7 +699,7 @@ int cpu_exec(CPUState *env)
                         } else {
                             is_exception_range = 0;
                         }
-                        if(target_env_eip>=0x80481b8&&target_env_eip<=0x80f3fcb){
+                        if(target_env_eip>=0x80481b8&&target_env_eip<=0x814a2f8){
                             is_program_range = 1;
                         } else {
                             is_program_range = 0;
