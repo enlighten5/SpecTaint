@@ -100,6 +100,14 @@ int do_enable_force_execution(Monitor *mon){
 int do_disable_force_execution(Monitor *mon) {
     if (force_execution_enabled) {
         force_execution_enabled = 0;
+        free(eip_stack);
+        eip_stack = NULL;
+        free(st_log);
+        st_log = NULL;
+        free(tainted_address_q);
+        tainted_address_q = NULL;
+        free(forced_branch);
+        forced_branch = NULL;
         monitor_printf(mon, "Force execution is now disabled\n");
     } else
         monitor_printf(mon, "Force execution is already disabled\n");

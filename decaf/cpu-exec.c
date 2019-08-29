@@ -254,7 +254,7 @@ static void cpu_handle_debug_exception(CPUState *env)
 }
 
 /* main execution loop */
-
+extern int detector;
 volatile sig_atomic_t exit_request;
 
 int cpu_exec(CPUState *env)
@@ -280,6 +280,7 @@ int cpu_exec(CPUState *env)
     int log_id;
     target_ulong env_eip;
     if(eip_stack==NULL){
+        detector = 0;
         eip_stack = initstack();
     }
     if(st_log==NULL){
@@ -679,7 +680,11 @@ int cpu_exec(CPUState *env)
                     target_cr3 = VMI_find_cr3_by_pid_c(pid);
                     if(target_cr3 == env->cr[3]){
                         target_env_eip = env->eip;
-                        if(target_env_eip>=0x8069e02&&target_env_eip<=0x806ad98){
+                        //jsmn
+                        //if(target_env_eip>=0x804857d&&target_env_eip<=0x8048db6){
+                        //testcrypto    
+                        if(target_env_eip>=0x8068faa&&target_env_eip<=0x806915e){    
+                        //if(target_env_eip>=0x804841d&&target_env_eip<=0x804848f){    
                             if(verbose){
                                 printf("cpu->eip 0x%4x\n", env->eip);
                             }                          
@@ -687,7 +692,9 @@ int cpu_exec(CPUState *env)
                         } else {
                             is_force_range = 0;
                         }
-                        if(target_env_eip>=0x806ccbf&&target_env_eip<=0x806d789){
+                        //testcrypto
+                        if(target_env_eip>=0x806c57b&&target_env_eip<=0x806d882){
+                        //if(target_env_eip>=0x804841d&&target_env_eip<=0x804848f){    
                             is_main_range = 1;
                         } else
                         {
@@ -699,7 +706,11 @@ int cpu_exec(CPUState *env)
                         } else {
                             is_exception_range = 0;
                         }
-                        if(target_env_eip>=0x80481b8&&target_env_eip<=0x814a2f8){
+                        //jsmn
+                        //if(target_env_eip>=0x80483b4&&target_env_eip<=0x80493d7){
+                        //testcrypto    
+                        if(target_env_eip>=0x80481b8&&target_env_eip<=0x814a2f8){    
+                        //if(target_env_eip>=0x80482b4&&target_env_eip<=0x8048517){    
                             is_program_range = 1;
                         } else {
                             is_program_range = 0;
@@ -789,11 +800,11 @@ int cpu_exec(CPUState *env)
                     int log_index;
                     popeip(eip_stack, env, &log_index);
                     //FIXME restore mem
-                    for(int i=st_log->top;i>=log_index;i--){
+                    for(int i=st_log->top-1;i>=log_index;i--){
                         uint32_t tmp_val = st_log->val[i];
                         DECAF_write_mem(env, st_log->addr[i], 4, &tmp_val);
                         if(verbose){
-                            //printf("Write 0x%4x to addr 0x%4x\n", tmp_val, st_log->addr[i]);
+                            printf("Write 0x%4x to addr 0x%4x\n", tmp_val, st_log->addr[i]);
                         }
                     }
                     st_log->top = log_index;

@@ -2638,7 +2638,7 @@ static inline void gen_jcc(DisasContext *s, int b,
         gen_jcc1_cond(s, cc_op, b, l1, &cond);
         if(is_force_range&&force_execution_enabled){
             if(cond>=TCG_COND_LT&&cond<=TCG_COND_GTU){
-                /*if(store_queue_add(forced_branch, s->tb->pc)){
+                if(store_queue_add(forced_branch, s->tb->pc)){
                    if(verbose){
                     printf("Flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
                     }
@@ -2646,9 +2646,9 @@ static inline void gen_jcc(DisasContext *s, int b,
                     saved_next_eip = next_eip;
                     saved_val = val;
                     force_flag = 1; 
-                }*/
+                }
 
-                if(rand()%2==0){
+                /*if(rand()%2==0){
                     if(verbose){
                     printf("Do not flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
                     }
@@ -2661,7 +2661,7 @@ static inline void gen_jcc(DisasContext *s, int b,
                 saved_next_eip = next_eip;
                 saved_val = val;
                 force_flag = 1;
-                }
+                }*/
             }
         }
 

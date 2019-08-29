@@ -6003,35 +6003,38 @@ void helper_DECAF_log_store(target_ulong addr){
     uint32_t val;
     DECAF_read_mem(env, addr, 4, &val);
     if(verbose){
-     //   printf("store 0x%4x at addr: 0x%4x\n", val, addr);
+        printf("store 0x%4x at addr: 0x%4x\n", val, addr);
     }
     log_store(st_log, addr, val);
 }
-
+int taint_flag = 1;
+int count = 0;
 void helper_DECAF_detect(target_ulong vaddr){
-    //printf("detect addr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
     if(tainted_address==vaddr){
+        printf("detect addr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
         detector++;
         if (detector==2)
         {
             detector = 0;
             printf("Spectre 1.0 detected at eip 0x%4x\n", env->eip);
-        }
-        
-    }
+        }   
+    } 
 }
 int taint_count = 0;
 void helper_DECAF_taint_mem(target_ulong vaddr){
     //printf("taint vaddr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
-    if(1/*store_queue_add(tainted_address_q, vaddr)*/){
+    if(store_queue_add(tainted_address_q, vaddr)){
+        //empty_taint_memory_page_table();
         uint8_t taint = 0xff;
         taintcheck_taint_virtmem(vaddr, 4, &taint); 
     }
 }
 void helper_DECAF_check_taint(target_ulong val, target_ulong vaddr){
-    if(val==0x1){
-        //printf("Found tainted address 0x%4x at eip 0x%4x\n", vaddr, env->eip);
-        tainted_address = vaddr;
+    if(val==0x1){ 
+        if(vaddr>0x80000000&&vaddr<0xf0000000){
+            printf("Found tainted address 0x%4x at eip 0x%4x\n", vaddr, env->eip);
+            tainted_address = vaddr;
+        }
     }
 }
 #endif
