@@ -29,6 +29,8 @@
 #endif
 
 #ifdef CONFIG_FORCE_EXECUTION
+FILE *tmp_log = NULL;
+
 int force_execution_enabled=0;
 int force_execution_mode=0;
 
@@ -43,6 +45,7 @@ int restore_flag=0;
 
 target_ulong saved_next_eip;
 target_ulong saved_val;
+target_ulong eip_after_as;
 
 int verbose = 0;
 
@@ -51,7 +54,19 @@ store_log *st_log = NULL;
 store_queue *tainted_address_q = NULL;
 store_queue *forced_branch = NULL;
 
-int branch_count=0;
+store_log *branch_depth = NULL;
+store_log *asan_report = NULL;
+
+int branch_count = 0;
+int nested_branch = 0;
+int restore_count = 0;
+
+target_ulong upper_bound;
+target_ulong lower_bound;
+
+FILE *branch_log = NULL;
+FILE *asan_report_log = NULL;
+int idx = 0;
 #endif
 
 int tb_invalidated_flag;
@@ -273,12 +288,27 @@ int cpu_exec(CPUState *env)
 #endif
 
 #ifdef CONFIG_FORCE_EXECUTION
-    const char *program_name = "testcrypto";
+    //btotli
+    //const char *program_name = "run_decoder";
+    //yaml
+    //const char *program_name = "parser";
+    //aes
+    //const char *program_name = "aes";
+    //rsa
+    //const char *program_name = "testcrypto";
+    //jsmn
+    const char *program_name = "simple_fuzz";
+    //http
+    //const char *program_name = "test_htp";
+    //const char *program_name = "spectreO3_upx";
     int pid;
     uint32_t target_cr3;
     target_ulong target_env_eip;
     int log_id;
     target_ulong env_eip;
+    target_ulong tmp_env_eip;
+    
+    
     if(eip_stack==NULL){
         detector = 0;
         eip_stack = initstack();
@@ -291,6 +321,12 @@ int cpu_exec(CPUState *env)
     }
     if(forced_branch==NULL){
         forced_branch = init_store_queue();
+    }
+    if(branch_depth==NULL){
+        branch_depth = init_store_log();
+    }
+    if(asan_report==NULL){
+        asan_report = init_store_log();
     }
 #endif
     if (env->halted) {
@@ -671,9 +707,27 @@ int cpu_exec(CPUState *env)
                 spin_lock(&tb_lock);
 
 
-				//AVB  We poerform our flush here
+				//AVB  We perform our flush here
 				DECAF_perform_flush(env);
 #ifdef CONFIG_FORCE_EXECUTION                
+                //Hook packer
+                if(0/*force_execution_enabled*/){
+                    pid = VMI_find_pid_by_name_c(program_name);
+                    target_cr3 = VMI_find_cr3_by_pid_c(pid);
+                    if(target_cr3 == env->cr[3]){ 
+                        is_force_range = 1;
+                        is_exception_range = 1;
+                        is_main_range = 1;
+                        is_program_range = 1;
+                    } else
+                    {
+                        is_force_range = 0;
+                        is_exception_range = 0;
+                        is_main_range = 0;
+                        is_program_range = 0;
+                    }
+                    
+                }
                 //zx012 hook the program and set flags
                 if(force_execution_enabled){
                     pid = VMI_find_pid_by_name_c(program_name);
@@ -681,36 +735,109 @@ int cpu_exec(CPUState *env)
                     if(target_cr3 == env->cr[3]){
                         target_env_eip = env->eip;
                         //jsmn
-                        //if(target_env_eip>=0x804857d&&target_env_eip<=0x8048db6){
+                        //if(target_env_eip>=0x80669e9&&target_env_eip<=0x806848a){
+                        //jsmn only jsmn_parse
+                        if(target_env_eip>=0x80677c1&&target_env_eip<=0x806848a){    
                         //testcrypto    
-                        if(target_env_eip>=0x8068faa&&target_env_eip<=0x806915e){    
-                        //if(target_env_eip>=0x804841d&&target_env_eip<=0x804848f){    
+                        //if(target_env_eip>=0x80771ea&&target_env_eip<0x80777df){ 
+                        //if(target_env_eip>=0x8069330&&target_env_eip<=0x8069cbb){    
+                           
+                        //aes    
+                        //if(target_env_eip>=0x8077940&&target_env_eip<0x807ee10){
+                        //brotli
+                        //if(target_env_eip>=0x807e627&&target_env_eip<0x8082870){ 
+                        //if(target_env_eip>=0x804898c&&target_env_eip<=0x806414a){        
+                        //yaml    
+                        //if(target_env_eip>=0x804bc20&&target_env_eip<0x8057e90){    
+                        //http
+                        //if((target_env_eip>=0x0806e280&&target_env_eip<0x807c6c1)||(target_env_eip>=0x08068bb0&&target_env_eip<0x806bbc0)){    
+                        //if((target_env_eip>=0x804c5e0&&target_env_eip<0x805c661)){
+                        //o1
+                        //if((target_env_eip>=0x8066979&&target_env_eip<0x80676fd)){
+                        //if((target_env_eip>=0x8067290&&target_env_eip<0x8067e4f)){            
+                        //o0    
+                        //if((target_env_eip>=0x8066979&&target_env_eip<0x8067594)){    
                             if(verbose){
-                                printf("cpu->eip 0x%4x\n", env->eip);
-                            }                          
+                                printf("cpu->eip 0x%4x, ebp: 0x%4x\n", env->eip, env->regs[R_EBP]);
+                            }      
                             is_force_range = 1;
                         } else {
                             is_force_range = 0;
                         }
                         //testcrypto
-                        if(target_env_eip>=0x806c57b&&target_env_eip<=0x806d882){
-                        //if(target_env_eip>=0x804841d&&target_env_eip<=0x804848f){    
+                        //if(target_env_eip>=0x8049dea&&target_env_eip<=0x804d1c7){
+                        //aes    
+                        //if(target_env_eip>=0x804c440&&target_env_eip<=0x804cf01){    
+                        //brotli
+                        if(target_env_eip>=0x8066d6e&&target_env_eip<=0x8067029){   
+                        //yaml    
+                        //http
+                        //if(target_env_eip>=0x804a6b0&&target_env_eip<=0x804a738){ 
+                        //use this as asan flag for now   
+                        //if(target_env_eip>=0x804a6a0&&target_env_eip<=0x8066948){
+                            //printf("target_env_eip: 0x%4x, esp: 0x%4x, ebp:0x%4x\n", target_env_eip, env->regs[R_ESP], env->regs[R_EBP]);
                             is_main_range = 1;
                         } else
                         {
                             is_main_range = 0;
                         }
-                        
-                        if(target_env_eip>=0x80690f0&&target_env_eip<=0x806d789){
+                        //yaml free
+                        //if(target_env_eip>=0x80529f0&&target_env_eip<=0x8052e47){
+                        //brotli    
+                        if(target_env_eip>=0x80670b1&&target_env_eip<0x8080739/*0x8082870*/){    
+                            /*if(force_execution_mode){
+                            eip_stack->top = 1;
+                            restore_flag = 1;
                             is_exception_range = 1;
+                            printf("Do not free\n");
+                            goto restore_state;
+                            }*/
+                            //printf("target_env_eip: 0x%4x\n", target_env_eip);
                         } else {
                             is_exception_range = 0;
                         }
                         //jsmn
-                        //if(target_env_eip>=0x80483b4&&target_env_eip<=0x80493d7){
+                        if(target_env_eip>=0x80495e4&&target_env_eip<=0x8069557){
                         //testcrypto    
-                        if(target_env_eip>=0x80481b8&&target_env_eip<=0x814a2f8){    
-                        //if(target_env_eip>=0x80482b4&&target_env_eip<=0x8048517){    
+                        //if(target_env_eip>=0x80497dc&&target_env_eip<=0x807bd77){  
+                        //aes      
+                        //if(target_env_eip>=0x80498d8&&target_env_eip<=0x81c5917){
+                        //btorli        
+                        //if(target_env_eip>=0x804845c&&target_env_eip<=0x80641f7){
+                        //yaml    
+                        //if(target_env_eip>=0x80481a8&&target_env_eip<=0x80fe2f8){
+                        //brotli
+                        //if(target_env_eip>=0x8049648&&target_env_eip<=0x8082be7){    
+                        //http    
+                        //if(target_env_eip>=0x804a000&&target_env_eip<=0x807cbc7){
+                        //if(target_env_eip>=0x8049574&&target_env_eip<=0x8067bb7){
+                        //spectre_O3
+                        //if(target_env_eip>=0x8049594&&target_env_eip<=0x80677e7){
+                        //o1            
+                        //if(target_env_eip>=0x8049594&&target_env_eip<=0x8067dc7){    
+                            //O3
+                        //if(target_env_eip>=0x8049594&&target_env_eip<=0x80681c7){     
+                            //printf("cpu->eip 0x%4x\n", env->eip);
+                            //printf("target_env_eip: 0x%4x\n", target_env_eip);
+                            //testcryto
+                            //if(target_env_eip>=0x807bd64&&target_env_eip<=0x807bd77){
+                            //http    
+                            //if(target_env_eip>=0x807cbb4&&target_env_eip<=0x807cbc7){    
+                            //spectre 03   
+                            //if(target_env_eip>=0x80677d4&&target_env_eip<=0x80677e7){ 
+                            //jsmn       
+                            if(target_env_eip>=0x8069544&&target_env_eip<=0x8069557){
+                                //printf("program finish\n");
+                
+                                 branch_log = fopen("/home/zhenxiao/X_Fuzz/decaf/branch_log", "a");
+                        
+                                fprintf(branch_log, "\n-----------seed: %d------------\n ", idx++);
+                        
+                                fclose(branch_log);
+                                restore_count = 0;
+                                branch_count = 0;
+                                nested_branch = 0;
+                            }   
                             is_program_range = 1;
                         } else {
                             is_program_range = 0;
@@ -719,6 +846,7 @@ int cpu_exec(CPUState *env)
                     {
                         is_force_range = 0;
                         is_exception_range = 0;
+                        is_main_range = 0;
                         is_program_range = 0;
                     }
                 }
@@ -788,7 +916,8 @@ int cpu_exec(CPUState *env)
                     }
                 }
                 //This may need to change, not only force range
-                if(is_force_range){
+                //Do not remove this!
+                if(is_force_range||is_main_range){
                     tb_phys_invalidate(tb, -1);
                 }
                 env->current_tb = NULL;
@@ -797,23 +926,40 @@ int cpu_exec(CPUState *env)
 #ifdef CONFIG_FORCE_EXECUTION
                 restore_state:
                 if(restore_flag==1){
+                    /*branch_log = fopen("/home/zhenxiao/X_Fuzz/decaf/branch_log", "a");
+                    fprintf(branch_log, "branch depth is: %d\n", eip_stack->top);
+                    fclose(branch_log);*/
+                    
+                    log_store(branch_depth, eip_stack->top, 0);
+                    if(branch_depth->top==10){
+                        branch_log = fopen("/home/zhenxiao/X_Fuzz/decaf/branch_log", "a");
+                        while (--branch_depth->top>0)
+                        {
+                            fprintf(branch_log, "%d ", branch_depth->addr[branch_depth->top]);
+                        }
+                        fclose(branch_log);
+                    }
+                    //printf("branch depth is: %d\n", eip_stack->top);
                     int log_index;
                     popeip(eip_stack, env, &log_index);
                     //FIXME restore mem
                     for(int i=st_log->top-1;i>=log_index;i--){
                         uint32_t tmp_val = st_log->val[i];
                         DECAF_write_mem(env, st_log->addr[i], 4, &tmp_val);
-                        if(verbose){
+                        if(0){
                             printf("Write 0x%4x to addr 0x%4x\n", tmp_val, st_log->addr[i]);
                         }
                     }
+                    
                     st_log->top = log_index;
                     if(verbose){
                         printf("restore to 0x%4x\n", env->eip);
                     }
                     restore_flag = 0;
+                    restore_count++;
                     longjmp(env->jmp_env, 1);
-                }
+                } 
+                
                 if(force_flag){
                    env_eip = env->eip;
                    CPUX86State *tmp_env =(CPUX86State*)malloc(sizeof(CPUX86State));

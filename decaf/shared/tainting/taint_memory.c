@@ -700,6 +700,57 @@ uint32_t calc_tainted_bytes(void){
 	}
 	return tainted_bytes;
 }
+
+int clear_tainted_bytes(void){
+	uint32_t tainted_bytes, i;
+	uint32_t leaf_index;
+	uint32_t middle_index;
+	tbitpage_middle_t *middle_node = NULL;
+	tbitpage_leaf_t *leaf_node = NULL;
+
+	if (!taint_memory_page_table)
+		return 0;
+	tainted_bytes = 0;
+	for (middle_index = 0; middle_index < taint_memory_page_table_root_size;
+			middle_index++) {
+		middle_node = taint_memory_page_table[middle_index];
+		if (middle_node) {
+			for (leaf_index = 0; leaf_index < (1 << BITPAGE_MIDDLE_BITS);
+					leaf_index++) {
+				leaf_node = middle_node->leaf[leaf_index];
+				if (leaf_node) {
+					for (i = 0; i < (1 << BITPAGE_LEAF_BITS); i++) {
+						if (leaf_node->bitmap[i])
+							leaf_node->bitmap[i] = 0;
+					}
+				}
+			}
+		}
+	}
+  CPUState *env = cpu_single_env ? cpu_single_env : first_cpu;
+  for(i=R_EAX;i<=R_EDI;i++){
+    if(env->taint_regs[i]){
+      env->taint_regs[i] = 0;
+    }
+  }
+  return 1;
+}
+void REGPARM clear_taint_mem(ram_addr_t addr, uint32_t size)
+{
+	tbitpage_leaf_t *leaf_node = NULL;
+    uint32_t i, offset, len=0;
+
+    for (i=0; i<size; i+=len) {
+        offset = (addr + i) & LEAF_ADDRESS_MASK;
+        len = min((1<<BITPAGE_LEAF_BITS) - offset, size - i);
+        leaf_node = read_leaf_node_i32(addr + i);
+        if(leaf_node) {
+            leaf_node->bitmap[offset] = 0;
+        }
+    }
+}
+
+
 /* Console control commands */
 void do_enable_tainting_internal(void) {
   if (!taint_tracking_enabled) {

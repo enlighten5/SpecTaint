@@ -5996,13 +5996,13 @@ void helper_DECAF_update_fpu(void)
 }
 
 #ifdef CONFIG_FORCE_EXECUTION
-target_ulong tainted_address;
+target_ulong tainted_address = 0;
 int detector = 0;
 void helper_DECAF_log_store(target_ulong addr){
     //FIXME what size should it be?
     uint32_t val;
     DECAF_read_mem(env, addr, 4, &val);
-    if(verbose){
+    if(0){
         printf("store 0x%4x at addr: 0x%4x\n", val, addr);
     }
     log_store(st_log, addr, val);
@@ -6020,21 +6020,44 @@ void helper_DECAF_detect(target_ulong vaddr){
         }   
     } 
 }
-int taint_count = 0;
-void helper_DECAF_taint_mem(target_ulong vaddr){
-    //printf("taint vaddr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
-    if(store_queue_add(tainted_address_q, vaddr)){
-        //empty_taint_memory_page_table();
-        uint8_t taint = 0xff;
-        taintcheck_taint_virtmem(vaddr, 4, &taint); 
+void helper_DECAF_taint_mem(target_ulong vaddr, target_ulong idx){
+    uint32_t taint = 0xffff;
+    if(vaddr==0){
+        env->taint_regs[idx] = taint;
+    } else {
+        if(store_queue_add(tainted_address_q, vaddr)){
+            //empty_taint_memory_page_table();
+            //clear_tainted_bytes();
+            //printf("taint vaddr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
+            taintcheck_taint_virtmem(vaddr, 4, &taint); 
+        }
     }
 }
 void helper_DECAF_check_taint(target_ulong val, target_ulong vaddr){
+
+    //printf("check_taint\n");
     if(val==0x1){ 
-        if(vaddr>0x80000000&&vaddr<0xf0000000){
-            printf("Found tainted address 0x%4x at eip 0x%4x\n", vaddr, env->eip);
+        if(vaddr>0x10000&&vaddr<0xf0000000){
+            //printf("Found tainted address 0x%4x at eip 0x%4x\n", vaddr, env->eip);
             tainted_address = vaddr;
         }
+    }
+}
+void helper_DECAF_check_taint2(target_ulong val, target_ulong addr){
+    //printf("check_taint2\n");
+    if(val==0x1){
+        printf("load from tainted address 0x%4x at eip 0x%4x, val: %d\n", addr, env->eip, val);
+    }
+    
+}
+//extern target_ulong save_esp;
+void helper_DECAF_print(){
+    //printf("before restore esp is: 0x%4x\n", env->regs[R_ESP]);
+    //env->regs[R_ESP] += 0xc;
+    uint32_t taint = 0xffff;
+    //printf("Eax is 0x%4x at 0x%4x, esp: 0x%4x, ebp: 0x%4x\n", env->regs[R_EAX], env->eip, env->regs[R_ESP], env->regs[R_EBP]);
+    if(taint_tracking_enabled){
+        taintcheck_taint_virtmem(env->regs[R_EAX], 4, &taint);
     }
 }
 #endif

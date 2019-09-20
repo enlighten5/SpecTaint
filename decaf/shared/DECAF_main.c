@@ -110,6 +110,13 @@ void pusheip(saved_eip *stack, target_ulong eip, CPUX86State *env, int log_id){
 			printf("Exceed eip stack size\n");
 		}
 }
+extern target_ulong tainted_address;
+extern int branch_count;
+extern int nested_branch;
+extern restore_count;
+extern int detector;
+int tmp_idx = 0;
+FILE *trace_log;
 void popeip(saved_eip *stack, CPUX86State *env, int *log_id){
     if(stack->top == 0){
         return;
@@ -126,6 +133,18 @@ void popeip(saved_eip *stack, CPUX86State *env, int *log_id){
 				if(stack->top==0){
 					instruction_counter = 0;
 					force_execution_mode = 0;
+					//printf("clear tainted bytes\n");
+					//printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
+					if(++tmp_idx%10==0){
+						trace_log = fopen("/home/zhenxiao/X_Fuzz/decaf/trace_log", "a");
+						fprintf(trace_log, "Restore count: %d, branch count: %d, nested branch: %d\n", restore_count,branch_count, nested_branch);
+						fclose(trace_log);
+						//printf("Restore count: %d, branch count: %d, nested branch: %d\n", restore_count,branch_count, nested_branch);
+					}
+					//nested_branch = 0;
+					clear_tainted_bytes();
+					tainted_address = 0;
+					detector = 0;
 				}
         return;
     }
@@ -142,9 +161,10 @@ void log_store(store_log *stack, target_ulong vaddr, target_ulong val){
 	stack->addr[stack->top] = vaddr;
 	stack->val[stack->top] = val;
 	stack->top++;
-	if (stack->top>=20000)
+	if (stack->top>=18000)
 	{
-		printf("Exceed store log size\n");
+		//printf("Exceed store log size\n");
+		restore_flag = 1;
 	}
 }
 
@@ -176,7 +196,7 @@ int store_queue_add(store_queue *queue, target_ulong vaddr){
 		index %= 200;
 		if(queue->addr[index]==vaddr){
 			queue->count[index]++;
-			if(queue->count[index]>5){
+			if(queue->count[index]>50){
 				return 0;
 			} else {
 				return 1;

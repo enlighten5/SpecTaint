@@ -244,7 +244,7 @@ static int io_mem_taint;
 #ifdef WIN32
 static const char *logfilename = "qemu.log";
 #else
-static const char *logfilename = "/tmp/qemu.log";
+static const char *logfilename = "/home/zhenxiao/X_Fuzz/decaf/qemulog";//"/tmp/qemu.log";
 #endif
 FILE *logfile;
 int loglevel;

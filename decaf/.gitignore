@@ -7,7 +7,7 @@
 
 
 .DS_Store
-*.mak
+#*.mak
 *.log
 *.swp
 

@@ -148,6 +148,7 @@ typedef struct store_log{
 store_log* init_store_log();
 void log_store(store_log *stack, target_ulong vaddr, target_ulong val);
 extern store_log *st_log;
+extern store_log *asan_report;
 
 //Queue
 typedef struct store_queue{

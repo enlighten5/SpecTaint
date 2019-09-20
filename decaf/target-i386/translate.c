@@ -66,6 +66,7 @@
 #define REX_B(s) 0
 #endif
 
+extern FILE *logfile;
 //LOK: I need a temporary global to hold the jump target for basic block end
 // This is used for checking to see if the block end callback is needed
 // Note that this is only known for direct jumps - for indirect jumps
@@ -1241,6 +1242,7 @@ static inline void gen_jcc1_cond(DisasContext *s, int cc_op, int b, int l1, TCGC
                             break;
                     }
                     tcg_gen_brcondi_tl(inv ? TCG_COND_NE : TCG_COND_EQ, t0, 0, l1);
+                    *condition = inv ? TCG_COND_NE : TCG_COND_EQ;
                     break;
                 case JCC_S:
                 fast_jcc_s:
@@ -1249,11 +1251,13 @@ static inline void gen_jcc1_cond(DisasContext *s, int cc_op, int b, int l1, TCGC
                             tcg_gen_andi_tl(cpu_tmp0, cpu_cc_dst, 0x80);
                             tcg_gen_brcondi_tl(inv ? TCG_COND_EQ : TCG_COND_NE, cpu_tmp0,
                                                0, l1);
+                            *condition = inv ? TCG_COND_EQ : TCG_COND_NE;
                             break;
                         case 1:
                             tcg_gen_andi_tl(cpu_tmp0, cpu_cc_dst, 0x8000);
                             tcg_gen_brcondi_tl(inv ? TCG_COND_EQ : TCG_COND_NE, cpu_tmp0,
                                                0, l1);
+                            *condition = inv ? TCG_COND_EQ : TCG_COND_NE;                   
                             break;
 #ifdef TARGET_X86_64
                         case 2:
@@ -1397,6 +1401,7 @@ static inline void gen_jcc1_cond(DisasContext *s, int cc_op, int b, int l1, TCGC
             gen_setcc_slow_T0(s, jcc_op);
             tcg_gen_brcondi_tl(inv ? TCG_COND_EQ : TCG_COND_NE,
                                cpu_T[0], 0, l1);
+            *condition = inv ? TCG_COND_EQ : TCG_COND_NE;
             break;
     }
 }
@@ -1658,9 +1663,10 @@ static void gen_op(DisasContext *s1, int op, int ot, int d)
         break;
     case OP_CMPL:
         if(is_force_range&&taint_tracking_enabled){  
-            if(d == OR_TMP0){
-                //printf("debug_count: %d\n", debug_count++);
-                gen_helper_DECAF_taint_mem(cpu_A0);
+            if (d <= 7) {
+                //gen_helper_DECAF_taint_mem(0, d);
+            } else if(d==OR_TMP0){
+                //gen_helper_DECAF_taint_mem(cpu_A0, -1);
             }
         }
         gen_op_cmpl_T0_T1_cc();
@@ -2630,22 +2636,36 @@ static inline void gen_jcc(DisasContext *s, int b,
                            target_ulong val, target_ulong next_eip)
 {
     int l1, l2, cc_op;
-    TCGv cond;
+    TCGv cond = -1;
     cc_op = s->cc_op;
     gen_update_cc_op(s);
     if (s->jmp_opt) {
         l1 = gen_new_label();
         gen_jcc1_cond(s, cc_op, b, l1, &cond);
         if(is_force_range&&force_execution_enabled){
-            if(cond>=TCG_COND_LT&&cond<=TCG_COND_GTU){
-                if(store_queue_add(forced_branch, s->tb->pc)){
-                   if(verbose){
-                    printf("Flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
-                    }
+            //yaml
+            //if(cond>=TCG_COND_EQ&&cond<=TCG_COND_GTU&&cond!=TCG_COND_LEU){
+            //Only enable EQ/NE for testcase
+            //if(cond>=TCG_COND_NE&&cond<=TCG_COND_GTU){    
+            //For packer
+            //if(cond==TCG_COND_GE||cond==TCG_COND_GEU){   
+            if(cond>TCG_COND_NE&&cond<=TCG_COND_GT){    
+                if(1/*store_queue_add(forced_branch, s->tb->pc)*/){
+                    //printf("Flip branch %d at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
                     //branch_count++;
                     saved_next_eip = next_eip;
                     saved_val = val;
                     force_flag = 1; 
+                    if(force_execution_mode){
+                        nested_branch++;
+                        //printf("Flip branch %d in transient mode at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
+                    } else {
+                        branch_count++;
+                        //printf("Flip branch %d at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
+                        //printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
+                    
+                    }
+                    //printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
                 }
 
                 /*if(rand()%2==0){
@@ -4472,7 +4492,8 @@ static void gen_sse(DisasContext *s, int b, target_ulong pc_start, int rex_r)
         }
     }
 }
-
+//save esp when calling asan__
+target_ulong save_esp;
 /* convert one instruction. s->is_jmp is set if the translation must
    be stopped. Return the next pc value */
 static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
@@ -4483,6 +4504,8 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
     target_ulong next_eip, tval;
     int rex_w, rex_r;
     int insn_len = -1;
+
+    int idx = 0;
 
     //LOK: update the new globals - cur_pc is NOT the current_eip
     // and next_pc is the next IF jmp
@@ -6617,13 +6640,18 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
 
         gen_op_jmp_T0();
         gen_eob(s);
-        if(is_force_range&&force_execution_mode){
+        //if(is_force_range&&force_execution_mode){
+        //For testcase, should use is_main_range    
+        if(is_force_range&&force_execution_mode){    
             if(verbose){
                 printf("Ret pc is 0x%4x\n", s->tb->pc);
             }
             if(eip_stack->top>0){
                 restore_flag = 1;
             }
+        }
+        if(is_force_range){
+            //printf("branch count: %d, nested branch: %d, pc: 0x%4x\n", branch_count, nested_branch, s->tb->pc);
         }
         break;
     case 0xca: /* lret im */
@@ -6692,9 +6720,91 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
                 tval &= 0xffff;
             else if(!CODE64(s))
                 tval &= 0xffffffff;
-            gen_movtl_T0_im(next_eip);
-            gen_push_T0(s);
-            gen_jmp(s, tval);
+            if(is_program_range){
+                //hook main return
+                //brotli
+                /*if(s->tb->pc>=0x8066d6e&&s->tb->pc<=0x8067029){
+                    if(tval==0x8049840){
+                        //printf("Return from main function\n");
+                        restore_count = 0;
+                    }
+                }*/
+
+                //if(tval==0x805f590||tval==0x805ec60||tval==0x8062140||tval==0x8057690||tval==0x8058130||tval==0x8057690||tval==0x8062290){
+                //__asan::ASAN_OnSIGSEGV()  
+                //HTP  
+                //if(s->tb->pc>=0x8058590&&s->tb->pc<=0x8058619){
+                //brotli    
+                //if(s->tb->pc>=0x80577b0&&s->tb->pc<=0x8057839){    
+                //jsmn    
+                if(s->tb->pc>=0x8057730&&s->tb->pc<=0x80577b9){ 
+                //spectre o1||o0    
+                //if(s->tb->pc>=0x80576c0&&s->tb->pc<=0x8057749){
+                //testcrypto           
+                //if(0&&s->tb->pc>=0x805b390&&s->tb->pc<=0x805b419){
+                    if(force_execution_mode){
+                        restore_flag = 1;
+                        gen_eob(s);
+                        printf("Do not report SEGV error at 0x%4x at 0x%4x, 0x%4x\n", tval, s->tb->pc, next_eip);
+                    } else{
+                        printf("Cannot handle SEGV error at 0x%4x at 0x%4x, 0x%4x\n", tval, s->tb->pc, next_eip);
+                    }
+                    //tval = next_eip;
+                    //next_eip = 0x8066a13;//a2e
+                    //gen_jmp(s, next_eip);
+
+                    
+                    //gen_movtl_T0_im(next_eip);
+                    //gen_push_T0(s);
+                    //gen_jmp(s, tval);
+                //__asan_report_load4, taint the address stored in eax 
+                //testcrypto   
+                //} else if(tval==0x805c290||tval==0x805c2e0||tval==0x805c330||tval==0x805c380||tval==0x805c3d0){
+                //jsmn    
+                } else if(tval==0x8058630||tval==0x8058680||tval==0x80586d0||tval==0x8058720||tval==0x8058770){    
+                //aes    
+                //} else if(tval==0x805d930||tval==0x805d980||tval==0x805d9d0||tval==0x805da20||tval==0x805da70){
+                //http    
+                //} else if(tval==0x8059490||tval==0x80594e0||tval==0x8059530||tval==0x8059580||tval==0x80595d0){    
+                //brotli
+                //} else if(tval==0x80586b0||tval==0x8058700||tval==0x8058750||tval==0x80587a0||tval==0x80587f0){    
+                //} else if(tval==0x8058590||tval==0x80585e0||tval==0x8058630||tval==0x8058680||tval==0x80586d0){ 
+                    //SPECTRE01
+                //} else if(tval==0x80585c0||tval==0x8058610||tval==0x8058660||tval==0x80586b0||tval==0x8058700){  
+                    //O3  
+                //} else if(tval==0x8058ed0||tval==0x8058f20||tval==0x8058f70||tval==0x8058fc0||tval==0x8059010){
+                    /*log_store(asan_report, s->tb->pc, 0);
+                    if(asan_report->top==10){
+                        asan_report_log = fopen("/home/zhenxiao/X_Fuzz/decaf/asan_report_log", "a");
+                        while (--asan_report->top>0)
+                        {
+                            fprintf(asan_report_log, "0x%4x\n", asan_report->addr[asan_report->top]);
+                        }
+                        fclose(asan_report_log);
+                    }*/
+                    //printf("found out of bound at 0x%4x\n", s->tb->pc);
+                    CPUState *tmp_env = cpu_single_env ? cpu_single_env : first_cpu;
+                    //save_esp = tmp_env->regs[R_ESP];
+                    gen_helper_DECAF_print();
+                    //testcrypto
+                    //gen_op_add_reg_im(1, R_ESP, 0x10);
+                    gen_jmp(s, next_eip);
+                    
+                    //tmp_env->eip = next_eip;
+                    //longjmp(tmp_env->jmp_env, 1);
+                    /*gen_movtl_T0_im(next_eip);
+                    gen_push_T0(s);
+                    gen_jmp(s, tval);*/
+                } else {
+                    gen_movtl_T0_im(next_eip);
+                    gen_push_T0(s);
+                    gen_jmp(s, tval);
+                }
+            } else {
+                gen_movtl_T0_im(next_eip);
+                gen_push_T0(s);
+                gen_jmp(s, tval);
+            }
         }
         break;
     case 0x9a: /* lcall im */
@@ -6721,7 +6831,6 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
             tval &= 0xffff;
         else if(!CODE64(s))
             tval &= 0xffffffff;
-
         gen_jmp(s, tval);
         break;
     case 0xea: /* ljmp im */
@@ -6743,7 +6852,6 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
         tval += s->pc - s->cs_base;
         if (s->dflag == 0)
             tval &= 0xffff;
-
         gen_jmp(s, tval);
         break;
     case 0x70 ... 0x7f: /* jcc Jb */
@@ -8509,7 +8617,10 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         /* stop translation if indicated */
         if(is_program_range&&force_execution_mode){
             instruction_counter++;
-            if(instruction_counter==20){
+            //brotli ||||testcrypto
+            //if(instruction_counter==20){
+               //jsmn
+            if(instruction_counter==100){    
 #ifdef CONFIG_TCG_TAINT
                 if (taint_tracking_enabled)
                     lj = optimize_taint(search_pc);

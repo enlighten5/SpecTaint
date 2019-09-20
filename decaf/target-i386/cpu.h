@@ -805,10 +805,15 @@ extern int instruction_counter;
 
 extern target_ulong saved_next_eip;
 extern target_ulong saved_val;
-
+extern target_ulong eip_after_as;
 extern int verbose;
 
+
+extern FILE *asan_report_log;
+
 extern int branch_count;
+extern int nested_branch;
+extern int restore_count;
 #endif
 
 CPUX86State *cpu_x86_init(const char *cpu_model);
