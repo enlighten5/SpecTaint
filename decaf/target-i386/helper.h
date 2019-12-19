@@ -29,7 +29,7 @@ DEF_HELPER_0(DECAF_taint_cmpxchg, void)
 #endif /* CONFIG_TCG_TAINT */
 
 #ifdef CONFIG_FORCE_EXECUTION
-DEF_HELPER_1(DECAF_log_store, void, tl)
+DEF_HELPER_2(DECAF_log_store, void, tl, tl)
 DEF_HELPER_1(DECAF_detect, void,tl)
 DEF_HELPER_2(DECAF_taint_mem, void, tl, tl)
 DEF_HELPER_2(DECAF_check_taint, void, tl, tl)

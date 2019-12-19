@@ -936,7 +936,7 @@ static inline int gen_taintcheck_insn(int search_pc)
                 //if it does not work here, add it at translate.c
                 //printf("Add DECAF_detect on load in tcg_taint.c\n");
                 //gen_helper_DECAF_detect(addr);
-                gen_helper_DECAF_check_taint2(t2, addr);
+                //gen_helper_DECAF_check_taint2(t2, addr);
               }
             }
             } else

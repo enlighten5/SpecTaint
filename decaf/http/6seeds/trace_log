@@ -1,0 +1,103 @@
+Restore count: 9, branch count: 10, nested branch: 0
+Restore count: 19, branch count: 20, nested branch: 0
+Restore count: 31, branch count: 30, nested branch: 2
+Restore count: 45, branch count: 40, nested branch: 6
+Restore count: 60, branch count: 50, nested branch: 11
+Restore count: 70, branch count: 60, nested branch: 11
+Restore count: 80, branch count: 70, nested branch: 11
+Restore count: 90, branch count: 80, nested branch: 11
+Restore count: 101, branch count: 90, nested branch: 12
+Restore count: 114, branch count: 100, nested branch: 15
+Restore count: 127, branch count: 110, nested branch: 18
+Restore count: 167, branch count: 120, nested branch: 52
+Restore count: 185, branch count: 130, nested branch: 60
+Restore count: 203, branch count: 140, nested branch: 68
+Restore count: 222, branch count: 150, nested branch: 77
+Restore count: 237, branch count: 160, nested branch: 82
+Restore count: 248, branch count: 170, nested branch: 83
+Restore count: 264, branch count: 180, nested branch: 89
+Restore count: 279, branch count: 190, nested branch: 94
+Restore count: 290, branch count: 200, nested branch: 95
+Restore count: 306, branch count: 210, nested branch: 101
+Restore count: 345, branch count: 220, nested branch: 131
+Restore count: 355, branch count: 230, nested branch: 131
+Restore count: 365, branch count: 240, nested branch: 131
+Restore count: 375, branch count: 250, nested branch: 131
+Restore count: 387, branch count: 260, nested branch: 133
+Restore count: 400, branch count: 270, nested branch: 136
+Restore count: 414, branch count: 280, nested branch: 140
+Restore count: 425, branch count: 290, nested branch: 141
+Restore count: 437, branch count: 300, nested branch: 143
+Restore count: 449, branch count: 310, nested branch: 145
+Restore count: 463, branch count: 320, nested branch: 149
+Restore count: 475, branch count: 330, nested branch: 151
+Restore count: 506, branch count: 340, nested branch: 172
+Restore count: 518, branch count: 350, nested branch: 174
+Restore count: 529, branch count: 360, nested branch: 176
+Restore count: 543, branch count: 370, nested branch: 180
+Restore count: 556, branch count: 380, nested branch: 183
+Restore count: 569, branch count: 390, nested branch: 186
+Restore count: 581, branch count: 400, nested branch: 188
+
+-----------seed: 0 end------------
+
+
+Restore count: 2, branch count: 3, nested branch: 0
+Restore count: 12, branch count: 13, nested branch: 0
+Restore count: 23, branch count: 23, nested branch: 1
+Restore count: 39, branch count: 33, nested branch: 7
+Restore count: 52, branch count: 43, nested branch: 11
+Restore count: 82, branch count: 53, nested branch: 31
+Restore count: 116, branch count: 63, nested branch: 55
+Restore count: 126, branch count: 73, nested branch: 55
+Restore count: 136, branch count: 83, nested branch: 55
+Restore count: 146, branch count: 93, nested branch: 55
+Restore count: 156, branch count: 103, nested branch: 55
+Restore count: 169, branch count: 113, nested branch: 58
+Restore count: 181, branch count: 123, nested branch: 60
+Restore count: 195, branch count: 133, nested branch: 64
+Restore count: 206, branch count: 143, nested branch: 65
+Restore count: 219, branch count: 153, nested branch: 68
+Restore count: 233, branch count: 164, nested branch: 72
+Restore count: 270, branch count: 174, nested branch: 103
+Restore count: 284, branch count: 184, nested branch: 107
+Restore count: 303, branch count: 194, nested branch: 116
+Restore count: 319, branch count: 204, nested branch: 122
+Restore count: 348, branch count: 214, nested branch: 141
+Restore count: 360, branch count: 224, nested branch: 143
+Restore count: 373, branch count: 234, nested branch: 146
+Restore count: 384, branch count: 244, nested branch: 147
+Restore count: 398, branch count: 254, nested branch: 151
+Restore count: 408, branch count: 264, nested branch: 151
+Restore count: 435, branch count: 275, nested branch: 169
+Restore count: 451, branch count: 285, nested branch: 175
+Restore count: 469, branch count: 295, nested branch: 183
+Restore count: 481, branch count: 305, nested branch: 185
+Restore count: 499, branch count: 315, nested branch: 193
+Restore count: 516, branch count: 325, nested branch: 200
+Restore count: 545, branch count: 335, nested branch: 221
+Restore count: 579, branch count: 345, nested branch: 245
+Restore count: 594, branch count: 355, nested branch: 250
+
+-----------seed: 1 end------------
+
+
+Restore count: 7, branch count: 8, nested branch: 0
+Restore count: 17, branch count: 18, nested branch: 0
+Restore count: 29, branch count: 28, nested branch: 2
+Restore count: 45, branch count: 39, nested branch: 8
+Restore count: 59, branch count: 49, nested branch: 13
+Restore count: 106, branch count: 59, nested branch: 50
+Restore count: 121, branch count: 69, nested branch: 55
+Restore count: 131, branch count: 79, nested branch: 55
+Restore count: 141, branch count: 89, nested branch: 55
+Restore count: 151, branch count: 99, nested branch: 55
+Restore count: 164, branch count: 109, nested branch: 58
+Restore count: 179, branch count: 119, nested branch: 63
+Restore count: 192, branch count: 129, nested branch: 67
+Restore count: 206, branch count: 139, nested branch: 71
+Restore count: 220, branch count: 149, nested branch: 75
+
+-----------seed: 2 end------------
+
+

@@ -23,6 +23,8 @@
 #include <inttypes.h>
 #include <signal.h>
 
+#include <time.h>
+
 #include "cpu.h"
 #include "disas.h"
 #include "tcg-op.h"
@@ -621,18 +623,27 @@ static inline void gen_op_ld_T1_A0(int idx)
 static inline void gen_op_st_v(int idx, TCGv t0, TCGv a0)
 {
     int mem_index = (idx >> 2) - 1;
-    if(is_program_range&&force_execution_mode){
-        //printf("log the value before store\n");
-        gen_helper_DECAF_log_store(a0);
-    }
+    
     switch(idx & 3) {
     case 0:
+        if(is_program_range&&force_execution_mode){
+            //printf("log the value size 1 before store\n");
+            gen_helper_DECAF_log_store(a0, 1);
+        }
         tcg_gen_qemu_st8(t0, a0, mem_index);
         break;
     case 1:
+        if(is_program_range&&force_execution_mode){
+            //printf("log the value size 2 before store\n");
+            gen_helper_DECAF_log_store(a0, 2);
+        }
         tcg_gen_qemu_st16(t0, a0, mem_index);
         break;
     case 2:
+        if(is_program_range&&force_execution_mode){
+            //printf("log the value size 4 before store\n");
+            gen_helper_DECAF_log_store(a0, 4);
+        }
         tcg_gen_qemu_st32(t0, a0, mem_index);
         break;
     default:
@@ -2639,6 +2650,7 @@ static inline void gen_jcc(DisasContext *s, int b,
     TCGv cond = -1;
     cc_op = s->cc_op;
     gen_update_cc_op(s);
+    time_t original_time = 0;
     if (s->jmp_opt) {
         l1 = gen_new_label();
         gen_jcc1_cond(s, cc_op, b, l1, &cond);
@@ -2648,22 +2660,31 @@ static inline void gen_jcc(DisasContext *s, int b,
             //Only enable EQ/NE for testcase
             //if(cond>=TCG_COND_NE&&cond<=TCG_COND_GTU){    
             //For packer
-            //if(cond==TCG_COND_GE||cond==TCG_COND_GEU){   
-            if(cond>TCG_COND_NE&&cond<=TCG_COND_GT){    
-                if(1/*store_queue_add(forced_branch, s->tb->pc)*/){
+            //if(cond==TCG_COND_GE||cond==TCG_COND_GEU){
+            if(cond > TCG_COND_NE && cond <= TCG_COND_GTU){    
+                if(store_queue_add(forced_branch, s->tb->pc)){
+          
                     //printf("Flip branch %d at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
                     //branch_count++;
                     saved_next_eip = next_eip;
                     saved_val = val;
                     force_flag = 1; 
                     if(force_execution_mode){
+                        //how many nested branch in speculative execution
                         nested_branch++;
                         //printf("Flip branch %d in transient mode at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
                     } else {
+                        //how many branch encountered during normal execuiton
                         branch_count++;
                         //printf("Flip branch %d at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
                         //printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
                     
+                    }
+                    if(branch_count == 1){
+                        original_time = time(0);
+                    }
+                    if(branch_count % 10 == 0){
+                        printf("Time past: %d, nested count: %d\n", time(0) - original_time, nested_branch);
                     }
                     //printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
                 }
@@ -6644,11 +6665,15 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
         //For testcase, should use is_main_range    
         if(is_force_range&&force_execution_mode){    
             if(verbose){
-                printf("Ret pc is 0x%4x\n", s->tb->pc);
+                printf("Ret pc is 0x%4x\n", s->pc);
             }
             if(eip_stack->top>0){
                 restore_flag = 1;
             }
+            //zx012 the following lines of code are enabled when test rsa program. 
+            //cpu_single_env->exception_index = 40;
+            //longjmp(cpu_single_env->jmp_env, 1);
+            
         }
         if(is_force_range){
             //printf("branch count: %d, nested branch: %d, pc: 0x%4x\n", branch_count, nested_branch, s->tb->pc);
@@ -6720,7 +6745,7 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
                 tval &= 0xffff;
             else if(!CODE64(s))
                 tval &= 0xffffffff;
-            if(is_program_range){
+            if(0&&is_program_range){
                 //hook main return
                 //brotli
                 /*if(s->tb->pc>=0x8066d6e&&s->tb->pc<=0x8067029){
@@ -6737,11 +6762,13 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
                 //brotli    
                 //if(s->tb->pc>=0x80577b0&&s->tb->pc<=0x8057839){    
                 //jsmn    
-                if(s->tb->pc>=0x8057730&&s->tb->pc<=0x80577b9){ 
+                //if(s->tb->pc>=0x8057730&&s->tb->pc<=0x80577b9){ 
                 //spectre o1||o0    
                 //if(s->tb->pc>=0x80576c0&&s->tb->pc<=0x8057749){
                 //testcrypto           
                 //if(0&&s->tb->pc>=0x805b390&&s->tb->pc<=0x805b419){
+                //new
+                if(0&&s->tb->pc>=0x8057690&&s->tb->pc<=0x8057719){    
                     if(force_execution_mode){
                         restore_flag = 1;
                         gen_eob(s);
@@ -6761,14 +6788,14 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
                 //testcrypto   
                 //} else if(tval==0x805c290||tval==0x805c2e0||tval==0x805c330||tval==0x805c380||tval==0x805c3d0){
                 //jsmn    
-                } else if(tval==0x8058630||tval==0x8058680||tval==0x80586d0||tval==0x8058720||tval==0x8058770){    
+                //} else if(tval==0x8058630||tval==0x8058680||tval==0x80586d0||tval==0x8058720||tval==0x8058770){    
                 //aes    
                 //} else if(tval==0x805d930||tval==0x805d980||tval==0x805d9d0||tval==0x805da20||tval==0x805da70){
                 //http    
                 //} else if(tval==0x8059490||tval==0x80594e0||tval==0x8059530||tval==0x8059580||tval==0x80595d0){    
                 //brotli
                 //} else if(tval==0x80586b0||tval==0x8058700||tval==0x8058750||tval==0x80587a0||tval==0x80587f0){    
-                //} else if(tval==0x8058590||tval==0x80585e0||tval==0x8058630||tval==0x8058680||tval==0x80586d0){ 
+                } else if(tval==0x8058590||tval==0x80585e0||tval==0x8058630||tval==0x8058680||tval==0x80586d0){ 
                     //SPECTRE01
                 //} else if(tval==0x80585c0||tval==0x8058610||tval==0x8058660||tval==0x80586b0||tval==0x8058700){  
                     //O3  
@@ -8620,13 +8647,14 @@ static inline void gen_intermediate_code_internal(CPUState *env,
             //brotli ||||testcrypto
             //if(instruction_counter==20){
                //jsmn
+            //it will cause tcg error when counter is large.    
             if(instruction_counter==100){    
 #ifdef CONFIG_TCG_TAINT
                 if (taint_tracking_enabled)
                     lj = optimize_taint(search_pc);
 #endif /* CONFIG_TCG_TAINT */
-                if(verbose)
-                    printf("exceed SEW, set restore flag\n");
+                if(0)
+                    printf("exceed SEW at 0x%4x, set restore flag\n", pc_ptr);
                 restore_flag = 1;
                 gen_eob(dc);
                 break;

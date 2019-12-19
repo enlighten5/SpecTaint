@@ -1483,8 +1483,8 @@ static void QEMU_NORETURN raise_interrupt(int intno, int is_int, int error_code,
         helper_svm_check_intercept_param(SVM_EXIT_SWINT, 0);
     }
     if(is_program_range&&force_execution_mode&&(intno!=14)){
-        if(verbose){
-            printf("Do not raise interrupt in transient mode\n");
+        if(1){
+            printf("Do not raise interrupt 0x%xin transient mode at eip 0x%4x\n", intno, env->eip);
         }
         env->exception_index = 40;
         cpu_loop_exit(env);
@@ -5998,10 +5998,13 @@ void helper_DECAF_update_fpu(void)
 #ifdef CONFIG_FORCE_EXECUTION
 target_ulong tainted_address = 0;
 int detector = 0;
-void helper_DECAF_log_store(target_ulong addr){
+void helper_DECAF_log_store(target_ulong addr, target_ulong size){
     //FIXME what size should it be?
     uint32_t val;
-    DECAF_read_mem(env, addr, 4, &val);
+    //for(size=1;size<=4;size*=2){
+        DECAF_read_mem(env, addr, 4, &val);
+        //printf("read 4 bytes 0x%4x at 0x%4x, eip: 0x%4x  \n", val, addr, env->eip);
+    //}
     if(0){
         printf("store 0x%4x at addr: 0x%4x\n", val, addr);
     }
@@ -6011,26 +6014,26 @@ int taint_flag = 1;
 int count = 0;
 void helper_DECAF_detect(target_ulong vaddr){
     if(tainted_address==vaddr){
-        printf("detect addr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
+        //printf("detect addr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
         detector++;
         if (detector==2)
         {
             detector = 0;
-            printf("Spectre 1.0 detected at eip 0x%4x\n", env->eip);
+            printf("Spectre 1.0 detected at eip 0x%4x, depth %d\n", env->eip, eip_stack->top);
         }   
     } 
 }
-void helper_DECAF_taint_mem(target_ulong vaddr, target_ulong idx){
+void helper_DECAF_taint_mem(target_ulong vaddr, target_ulong reg){
     uint32_t taint = 0xffff;
-    if(vaddr==0){
-        env->taint_regs[idx] = taint;
-    } else {
+    if (reg == -1) {
         if(store_queue_add(tainted_address_q, vaddr)){
             //empty_taint_memory_page_table();
             //clear_tainted_bytes();
-            //printf("taint vaddr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
+            printf("taint vaddr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
             taintcheck_taint_virtmem(vaddr, 4, &taint); 
         }
+    } else {
+        env->taint_regs[reg] = taint;
     }
 }
 void helper_DECAF_check_taint(target_ulong val, target_ulong vaddr){

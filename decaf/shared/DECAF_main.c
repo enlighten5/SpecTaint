@@ -137,11 +137,12 @@ void popeip(saved_eip *stack, CPUX86State *env, int *log_id){
 					//printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
 					if(++tmp_idx%10==0){
 						trace_log = fopen("/home/zhenxiao/X_Fuzz/decaf/trace_log", "a");
-						fprintf(trace_log, "Restore count: %d, branch count: %d, nested branch: %d\n", restore_count,branch_count, nested_branch);
+						fprintf(trace_log, "Restore count: %d, branch count: %d, nested branch: %d\n", restore_count, branch_count, nested_branch);
 						fclose(trace_log);
 						//printf("Restore count: %d, branch count: %d, nested branch: %d\n", restore_count,branch_count, nested_branch);
 					}
 					//nested_branch = 0;
+					//branch_count = 0;
 					clear_tainted_bytes();
 					tainted_address = 0;
 					detector = 0;
@@ -196,7 +197,7 @@ int store_queue_add(store_queue *queue, target_ulong vaddr){
 		index %= 200;
 		if(queue->addr[index]==vaddr){
 			queue->count[index]++;
-			if(queue->count[index]>50){
+			if(queue->count[index] > 3){
 				return 0;
 			} else {
 				return 1;

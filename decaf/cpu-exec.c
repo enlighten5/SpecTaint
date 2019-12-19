@@ -65,8 +65,11 @@ target_ulong upper_bound;
 target_ulong lower_bound;
 
 FILE *branch_log = NULL;
+FILE *trace = NULL;
 FILE *asan_report_log = NULL;
 int idx = 0;
+
+extern int taint_tracking_enabled;
 #endif
 
 int tb_invalidated_flag;
@@ -289,18 +292,21 @@ int cpu_exec(CPUState *env)
 
 #ifdef CONFIG_FORCE_EXECUTION
     //btotli
-    //const char *program_name = "run_decoder";
+    //const char *program_name = "brotli";
     //yaml
-    //const char *program_name = "parser";
+    //const char *program_name = "http";
     //aes
     //const char *program_name = "aes";
     //rsa
-    //const char *program_name = "testcrypto";
+    const char *program_name = "testcrypto";
     //jsmn
-    const char *program_name = "simple_fuzz";
+    //const char *program_name = "jsmn";
     //http
-    //const char *program_name = "test_htp";
-    //const char *program_name = "spectreO3_upx";
+    //const char *program_name = "http";
+    //const char *program_name = "spectre15";
+    //const char *program_name = "restore";
+    target_ulong global_idx = 0x80d9454;
+    uint32_t taint_val = 0xffff;
     int pid;
     uint32_t target_cr3;
     target_ulong target_env_eip;
@@ -710,71 +716,132 @@ int cpu_exec(CPUState *env)
 				//AVB  We perform our flush here
 				DECAF_perform_flush(env);
 #ifdef CONFIG_FORCE_EXECUTION                
-                //Hook packer
-                if(0/*force_execution_enabled*/){
-                    pid = VMI_find_pid_by_name_c(program_name);
-                    target_cr3 = VMI_find_cr3_by_pid_c(pid);
-                    if(target_cr3 == env->cr[3]){ 
-                        is_force_range = 1;
-                        is_exception_range = 1;
-                        is_main_range = 1;
-                        is_program_range = 1;
-                    } else
-                    {
-                        is_force_range = 0;
-                        is_exception_range = 0;
-                        is_main_range = 0;
-                        is_program_range = 0;
-                    }
-                    
-                }
+                /*
+                //gcc O0: 
+                is_force_range:   0x8066979-0x80676fe
+                is_program_range: 0x8049594-0x8067dc7
+                asan_report_load: 0x80585c0 0x8058610 0x8058660 0x80586b0 0x8058700
+                //gcc O1: 
+                is_force_range:   0x8066979-0x806738f
+                is_program_range: 0x8049594-0x8067a27
+                asan_report_load: 0x80585c0 0x8058610 0x8058660 0x80586b0 0x8058700
+                //gcc O2: 
+                is_force_range:   0x80671c0-0x8067bb0
+                is_program_range: 0x8049594-0x8068087
+                asan_report_load: 0x8058e00 0x8058e50 0x8058ea0 0x8058ef0 0x8058f40
+                //gcc O3: 
+                is_force_range:   0x8067290-0x8067e50
+                is_program_range: 0x8049594-0x80681c7
+                asan_report_load: 0x8058ed0 0x8058f20 0x8058f70 0x8058fc0 0x8059010
+                //clang O0: 
+                is_force_range:   0x8155ff0-0x81576d0
+                is_program_range: 0x805cfd0-0x81583bf
+                asan_report_load: 0x812e000-0x812e5a0
+                //clang O1: 
+                is_force_range:   0x8156020-0x8156da0
+                is_program_range: 0x805cff0-0x815779f
+                asan_report_load: 0x812e030-0x812e5d0
+                //clang O2: 
+                is_force_range:   0x8156020-0x8156e30
+                is_program_range: 0x805cff0-0x8157cdf
+                asan_report_load: 0x812e030-0x812e5d0
+                //clang O3: 
+                is_force_range:   0x8156020-0x8156e30
+                is_program_range: 0x805cff0-0x8157cdf
+                asan_report_load: 0x812e030-0x812e5d0
+                */
                 //zx012 hook the program and set flags
                 if(force_execution_enabled){
                     pid = VMI_find_pid_by_name_c(program_name);
                     target_cr3 = VMI_find_cr3_by_pid_c(pid);
                     if(target_cr3 == env->cr[3]){
+                        if(taint_tracking_enabled){
+                            taintcheck_taint_virtmem(global_idx, 4, &taint_val);
+                        }
                         target_env_eip = env->eip;
-                        //jsmn
-                        //if(target_env_eip>=0x80669e9&&target_env_eip<=0x806848a){
-                        //jsmn only jsmn_parse
-                        if(target_env_eip>=0x80677c1&&target_env_eip<=0x806848a){    
-                        //testcrypto    
-                        //if(target_env_eip>=0x80771ea&&target_env_eip<0x80777df){ 
-                        //if(target_env_eip>=0x8069330&&target_env_eip<=0x8069cbb){    
-                           
-                        //aes    
-                        //if(target_env_eip>=0x8077940&&target_env_eip<0x807ee10){
-                        //brotli
-                        //if(target_env_eip>=0x807e627&&target_env_eip<0x8082870){ 
-                        //if(target_env_eip>=0x804898c&&target_env_eip<=0x806414a){        
-                        //yaml    
-                        //if(target_env_eip>=0x804bc20&&target_env_eip<0x8057e90){    
-                        //http
-                        //if((target_env_eip>=0x0806e280&&target_env_eip<0x807c6c1)||(target_env_eip>=0x08068bb0&&target_env_eip<0x806bbc0)){    
-                        //if((target_env_eip>=0x804c5e0&&target_env_eip<0x805c661)){
-                        //o1
-                        //if((target_env_eip>=0x8066979&&target_env_eip<0x80676fd)){
-                        //if((target_env_eip>=0x8067290&&target_env_eip<0x8067e4f)){            
-                        //o0    
-                        //if((target_env_eip>=0x8066979&&target_env_eip<0x8067594)){    
-                            if(verbose){
-                                printf("cpu->eip 0x%4x, ebp: 0x%4x\n", env->eip, env->regs[R_EBP]);
+                        
+                        //testcrypto     
+                        /*if(target_env_eip>=0x805990e&&target_env_eip<0x807e4fc){ 
+                            //testcrypto 
+                            if(0){
+                                printf("in force range, cpu->eip 0x%4x, ebp: 0x%4x\n", env->eip, env->regs[R_EBP]);
                             }      
                             is_force_range = 1;
-                        } else {
+                        } else if (target_env_eip>=0x807e628&&target_env_eip<0x807ef72) {
+                            //printf("in force range, cpu->eip 0x%4x\n", env->eip);
+                            is_force_range = 1;
+                        } else if (target_env_eip>=0x807f425&&target_env_eip<=0x080aa585) {
+                            //printf("rshift or reduce 0x%4x\n", env->eip);
                             is_force_range = 0;
                         }
+                        else {
+                            is_force_range = 0;
+                        }*/
+                        
+                        //aes
+                        /*if(target_env_eip>=0x8048afd&&target_env_eip<=0x80e2222){                  
+                            is_force_range = 1;
+                        } else if (target_env_eip>=0x0804863a&&target_env_eip<=0x080487cf) {
+                            is_force_range = 0;
+                        else {
+                            is_force_range = 0;
+                        }*/
+                        //jsmn
+                        /*if(target_env_eip>=0x8048e44&&target_env_eip<=0x8049763){                   
+                            is_force_range = 1;
+                        } else if (target_env_eip>=0x0804863a&&target_env_eip<=0x080487cf) {
+                            is_force_range = 0;
+                        } else if (target_env_eip>=0x0804857d&&target_env_eip<=0x08048610) {
+                            is_force_range = 0;
+                        } 
+                        else {
+                            is_force_range = 0;
+                        }*/
+                        //yaml
+                        /*if(target_env_eip>=0x804c716&&target_env_eip<=0x805e392){              
+                            if(0){
+                                printf("in force range, cpu->eip 0x%4x, ebp: 0x%4x\n", env->eip, env->regs[R_EBP]);
+                            }      
+                            is_force_range = 1;
+                        } else if (target_env_eip>=0x0804863a&&target_env_eip<=0x080487cf) {
+                            is_force_range = 0;
+                        } 
+                        else {
+                            is_force_range = 0;
+                        }*/
+                        //http
+                        if(target_env_eip>=0x8049bae&&target_env_eip<0x804bce8){
+                            if(0){
+                                printf("in force range, cpu->eip 0x%4x, ebp: 0x%4x\n", env->eip, env->regs[R_EBP]);
+                            }      
+                            is_force_range = 1;
+                        } else if (target_env_eip>=0x08048fac&&target_env_eip<=0x080492cb) {
+                            //responseheader and stuff
+                            is_force_range = 1;
+                        } else if (target_env_eip>=0x0804e7a0&&target_env_eip<0x805859a) {
+                            is_force_range = 1;
+                        } else if (target_env_eip>=0x0805b88a&&target_env_eip<0x806072d) {
+                            is_force_range = 1;
+                        } else if (target_env_eip>=0x08060af0&&target_env_eip<0x8062040) {                            
+                            is_force_range = 1;
+                        }
+                        else {
+                            is_force_range = 0;
+                        }
+                        
+
                         //testcrypto
                         //if(target_env_eip>=0x8049dea&&target_env_eip<=0x804d1c7){
                         //aes    
                         //if(target_env_eip>=0x804c440&&target_env_eip<=0x804cf01){    
                         //brotli
-                        if(target_env_eip>=0x8066d6e&&target_env_eip<=0x8067029){   
+                        //if(target_env_eip>=0x8066d6e&&target_env_eip<=0x8067029){   
                         //yaml    
                         //http
                         //if(target_env_eip>=0x804a6b0&&target_env_eip<=0x804a738){ 
                         //use this as asan flag for now   
                         //if(target_env_eip>=0x804a6a0&&target_env_eip<=0x8066948){
+                        if(target_env_eip>=0x8048e87&&target_env_eip<=0x8048f9e){    
                             //printf("target_env_eip: 0x%4x, esp: 0x%4x, ebp:0x%4x\n", target_env_eip, env->regs[R_ESP], env->regs[R_EBP]);
                             is_main_range = 1;
                         } else
@@ -796,20 +863,31 @@ int cpu_exec(CPUState *env)
                         } else {
                             is_exception_range = 0;
                         }
+                        if(0&&target_env_eip==0x8057690){
+                            if(force_execution_mode){
+                                printf("Do not report SEGV error\n");
+                                restore_flag = 1;
+                                goto restore_state;
+                            } else
+                            {
+                                printf("cannot handle sigsegv\n");
+                            }
+                            
+                        }
+                        //testcrypto
+                        //if(target_env_eip>=0x8048578&&target_env_eip<=0x80aa6d7){
                         //jsmn
-                        if(target_env_eip>=0x80495e4&&target_env_eip<=0x8069557){
-                        //testcrypto    
-                        //if(target_env_eip>=0x80497dc&&target_env_eip<=0x807bd77){  
+                        //if(target_env_eip>=0x80481a8&&target_env_eip<=0x80bfc2b){ 
                         //aes      
-                        //if(target_env_eip>=0x80498d8&&target_env_eip<=0x81c5917){
+                        //if(target_env_eip>=0x8048790&&target_env_eip<=0x80e33ff){
                         //btorli        
                         //if(target_env_eip>=0x804845c&&target_env_eip<=0x80641f7){
                         //yaml    
-                        //if(target_env_eip>=0x80481a8&&target_env_eip<=0x80fe2f8){
+                        //if(target_env_eip>=0x8048548&&target_env_eip<=0x805e427){
                         //brotli
                         //if(target_env_eip>=0x8049648&&target_env_eip<=0x8082be7){    
                         //http    
-                        //if(target_env_eip>=0x804a000&&target_env_eip<=0x807cbc7){
+                        if(target_env_eip>=0x80489a8&&target_env_eip<=0x08062297){
                         //if(target_env_eip>=0x8049574&&target_env_eip<=0x8067bb7){
                         //spectre_O3
                         //if(target_env_eip>=0x8049594&&target_env_eip<=0x80677e7){
@@ -820,25 +898,37 @@ int cpu_exec(CPUState *env)
                             //printf("cpu->eip 0x%4x\n", env->eip);
                             //printf("target_env_eip: 0x%4x\n", target_env_eip);
                             //testcryto
-                            //if(target_env_eip>=0x807bd64&&target_env_eip<=0x807bd77){
+                            //if(target_env_eip>=0x80aa73d&&target_env_eip<=0x80aa747){
                             //http    
-                            //if(target_env_eip>=0x807cbb4&&target_env_eip<=0x807cbc7){    
-                            //spectre 03   
-                            //if(target_env_eip>=0x80677d4&&target_env_eip<=0x80677e7){ 
-                            //jsmn       
-                            if(target_env_eip>=0x8069544&&target_env_eip<=0x8069557){
-                                //printf("program finish\n");
+                            if(target_env_eip>=0x0806228d&&target_env_eip<=0x08062297){    
+                            //jsmn
+                            //if(target_env_eip>=0x805e41d&&target_env_eip<=0x805e427){ 
+                            //aes
+                            //if(target_env_eip>=0x80e22f5&&target_env_eip<=0x80e33ff){
                 
-                                 branch_log = fopen("/home/zhenxiao/X_Fuzz/decaf/branch_log", "a");
-                        
-                                fprintf(branch_log, "\n-----------seed: %d------------\n ", idx++);
-                        
+                                /*branch_log = fopen("/home/zhenxiao/X_Fuzz/decaf/branch_log", "a");
+                                fprintf(branch_log, "\n-----------seed: %d end------------\n\n\n", idx);
                                 fclose(branch_log);
-                                restore_count = 0;
-                                branch_count = 0;
-                                nested_branch = 0;
-                            }   
+
+                                trace = fopen("/home/zhenxiao/X_Fuzz/decaf/trace_log", "a");
+						        fprintf(trace, "\n-----------seed: %d end------------\n\n\n", idx);
+						        fclose(trace);
+                                idx++;*/
+
+                                //restore_count = 0;
+                                //branch_count = 0;
+                                //nested_branch = 0;
+                                forced_branch->front = -1;
+                                forced_branch->rear = -1;
+                                forced_branch->size = 0;
+                            }  
                             is_program_range = 1;
+                            /*if(force_execution_mode){
+                                printf("force mode: cpu->eip 0x%4x\n", env->eip);
+                            } else {
+                                printf("cpu->eip 0x%4x\n", env->eip);
+                            }*/
+                            
                         } else {
                             is_program_range = 0;
                         }
@@ -855,6 +945,10 @@ int cpu_exec(CPUState *env)
 
 				
                 tb = tb_find_fast(env);
+                if(is_force_range){
+                    //printf("print tcg_ctx at 0x%4x\n", env->eip);
+                    //tcg_print_ops(&tcg_ctx);
+                }
                 /* Note: we do it here to avoid a gcc bug on Mac OS X when
                    doing it in tb_find_slow */
                 if (tb_invalidated_flag) {
@@ -917,7 +1011,7 @@ int cpu_exec(CPUState *env)
                 }
                 //This may need to change, not only force range
                 //Do not remove this!
-                if(is_force_range||is_main_range){
+                if(is_force_range||force_execution_mode){
                     tb_phys_invalidate(tb, -1);
                 }
                 env->current_tb = NULL;
@@ -950,6 +1044,7 @@ int cpu_exec(CPUState *env)
                             printf("Write 0x%4x to addr 0x%4x\n", tmp_val, st_log->addr[i]);
                         }
                     }
+                    tlb_flush(env, 1);
                     
                     st_log->top = log_index;
                     if(verbose){

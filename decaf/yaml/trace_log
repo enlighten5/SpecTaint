@@ -1,0 +1,17 @@
+Restore count: 32, branch count: 10, nested branch: 23
+Restore count: 91, branch count: 20, nested branch: 72
+
+-----------seed: 0 end------------
+
+
+Restore count: 32, branch count: 10, nested branch: 23
+Restore count: 91, branch count: 20, nested branch: 72
+------------------------
+Restore count: 32, branch count: 10, nested branch: 23
+Restore count: 91, branch count: 20, nested branch: 72
+Restore count: 32, branch count: 10, nested branch: 24
+Restore count: 91, branch count: 20, nested branch: 73
+------------------
+Restore count: 32, branch count: 10, nested branch: 23
+Restore count: 91, branch count: 20, nested branch: 72
+Restore count: 106, branch count: 30, nested branch: 77
