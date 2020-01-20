@@ -6056,7 +6056,6 @@ void helper_DECAF_check_taint2(target_ulong val, target_ulong addr){
 //extern target_ulong save_esp;
 void helper_DECAF_print(){
     //printf("before restore esp is: 0x%4x\n", env->regs[R_ESP]);
-    //env->regs[R_ESP] += 0xc;
     uint32_t taint = 0xffff;
     //printf("Eax is 0x%4x at 0x%4x, esp: 0x%4x, ebp: 0x%4x\n", env->regs[R_EAX], env->eip, env->regs[R_ESP], env->regs[R_EBP]);
     if(taint_tracking_enabled){

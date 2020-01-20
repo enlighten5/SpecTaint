@@ -197,7 +197,7 @@ int store_queue_add(store_queue *queue, target_ulong vaddr){
 		index %= 200;
 		if(queue->addr[index]==vaddr){
 			queue->count[index]++;
-			if(queue->count[index] > 3){
+			if(queue->count[index] > 5){
 				return 0;
 			} else {
 				return 1;

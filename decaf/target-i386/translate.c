@@ -2663,8 +2663,7 @@ static inline void gen_jcc(DisasContext *s, int b,
             //if(cond==TCG_COND_GE||cond==TCG_COND_GEU){
             if(cond > TCG_COND_NE && cond <= TCG_COND_GTU){    
                 if(store_queue_add(forced_branch, s->tb->pc)){
-          
-                    //printf("Flip branch %d at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
+                    printf("Flip branch %d at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
                     //branch_count++;
                     saved_next_eip = next_eip;
                     saved_val = val;
@@ -2688,21 +2687,6 @@ static inline void gen_jcc(DisasContext *s, int b,
                     }
                     //printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
                 }
-
-                /*if(rand()%2==0){
-                    if(verbose){
-                    printf("Do not flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
-                    }
-                    //branch_count++;
-                } else {
-                if(verbose){
-                    printf("Flip branch at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", s->tb->pc, next_eip, val);
-                }
-                //branch_count++;
-                saved_next_eip = next_eip;
-                saved_val = val;
-                force_flag = 1;
-                }*/
             }
         }
 
@@ -6667,8 +6651,10 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
             if(verbose){
                 printf("Ret pc is 0x%4x\n", s->pc);
             }
-            if(eip_stack->top>0){
+            if(eip_stack->top > 0){
                 restore_flag = 1;
+            } else {
+                printf("program finish, return normally\n");
             }
             //zx012 the following lines of code are enabled when test rsa program. 
             //cpu_single_env->exception_index = 40;
@@ -6754,19 +6740,6 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
                         restore_count = 0;
                     }
                 }*/
-
-                //if(tval==0x805f590||tval==0x805ec60||tval==0x8062140||tval==0x8057690||tval==0x8058130||tval==0x8057690||tval==0x8062290){
-                //__asan::ASAN_OnSIGSEGV()  
-                //HTP  
-                //if(s->tb->pc>=0x8058590&&s->tb->pc<=0x8058619){
-                //brotli    
-                //if(s->tb->pc>=0x80577b0&&s->tb->pc<=0x8057839){    
-                //jsmn    
-                //if(s->tb->pc>=0x8057730&&s->tb->pc<=0x80577b9){ 
-                //spectre o1||o0    
-                //if(s->tb->pc>=0x80576c0&&s->tb->pc<=0x8057749){
-                //testcrypto           
-                //if(0&&s->tb->pc>=0x805b390&&s->tb->pc<=0x805b419){
                 //new
                 if(0&&s->tb->pc>=0x8057690&&s->tb->pc<=0x8057719){    
                     if(force_execution_mode){
@@ -6784,22 +6757,8 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
                     //gen_movtl_T0_im(next_eip);
                     //gen_push_T0(s);
                     //gen_jmp(s, tval);
-                //__asan_report_load4, taint the address stored in eax 
-                //testcrypto   
-                //} else if(tval==0x805c290||tval==0x805c2e0||tval==0x805c330||tval==0x805c380||tval==0x805c3d0){
-                //jsmn    
-                //} else if(tval==0x8058630||tval==0x8058680||tval==0x80586d0||tval==0x8058720||tval==0x8058770){    
-                //aes    
-                //} else if(tval==0x805d930||tval==0x805d980||tval==0x805d9d0||tval==0x805da20||tval==0x805da70){
-                //http    
-                //} else if(tval==0x8059490||tval==0x80594e0||tval==0x8059530||tval==0x8059580||tval==0x80595d0){    
-                //brotli
-                //} else if(tval==0x80586b0||tval==0x8058700||tval==0x8058750||tval==0x80587a0||tval==0x80587f0){    
+                //__asan_report_load4, taint the address stored in eax    
                 } else if(tval==0x8058590||tval==0x80585e0||tval==0x8058630||tval==0x8058680||tval==0x80586d0){ 
-                    //SPECTRE01
-                //} else if(tval==0x80585c0||tval==0x8058610||tval==0x8058660||tval==0x80586b0||tval==0x8058700){  
-                    //O3  
-                //} else if(tval==0x8058ed0||tval==0x8058f20||tval==0x8058f70||tval==0x8058fc0||tval==0x8059010){
                     /*log_store(asan_report, s->tb->pc, 0);
                     if(asan_report->top==10){
                         asan_report_log = fopen("/home/zhenxiao/X_Fuzz/decaf/asan_report_log", "a");
@@ -8265,7 +8224,9 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
 			tcg_temp_free_i32(t_opcode);
 		}
     }
-
+    if(is_exception_range){
+        //printf("s->pc: 0x%4x\n", s->pc);
+    }
     return s->pc;
  illegal_op:
     if (s->prefix & PREFIX_LOCK)
@@ -8644,9 +8605,6 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         /* stop translation if indicated */
         if(is_program_range&&force_execution_mode){
             instruction_counter++;
-            //brotli ||||testcrypto
-            //if(instruction_counter==20){
-               //jsmn
             //it will cause tcg error when counter is large.    
             if(instruction_counter==100){    
 #ifdef CONFIG_TCG_TAINT
