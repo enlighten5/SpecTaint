@@ -90,31 +90,11 @@ void do_2cache_debug(Monitor *mon, const QDict *qdict) {
 extern int force_execution_enabled;
 extern target_ulong upper_bound;
 extern target_ulong lower_bound;
-int do_enable_force_execution(Monitor *mon){
+int do_enable_force_execution(Monitor *mon, const QDict *qdict){
     if(!force_execution_enabled){
         force_execution_enabled = 1;
-        int index = 2;
-        switch (index)
-        {
-        case 1:
-            upper_bound = 0x8068faa;
-            lower_bound = 0x806915e;
-            break;
-        case 2:
-            upper_bound = 0x806915f;
-            lower_bound = 0x80691e2;
-        case 3:
-            upper_bound = 0x80691e3;
-            lower_bound = 0x806932f;
-        case 4:
-            upper_bound = 0x8069330;
-            lower_bound = 0x806991c;
-        case 5:
-            upper_bound = 0x8069977;
-            lower_bound = 0x8069cbb;        
-        default:
-            break;
-        }
+        upper_bound = qdict_get_int(qdict, "upper");
+        lower_bound = qdict_get_int(qdict, "lower");
         monitor_printf(mon,  "Force execution is now enabled\n");
     } else {
         monitor_printf(mon, "Force execution is already enabled\n");

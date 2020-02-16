@@ -130,24 +130,24 @@ void popeip(saved_eip *stack, CPUX86State *env, int *log_id){
         if(verbose)
             printf("pop env->eip 0x%4x env->esp: 0x%4x insn_counter: %d, stack top: %d\n", env->eip, env->regs[R_ESP], instruction_counter, stack->top);
         free(tmp_env);
-				if(stack->top==0){
-					instruction_counter = 0;
-					force_execution_mode = 0;
-					//printf("clear tainted bytes\n");
-					//printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
-					if(++tmp_idx%10==0){
-						trace_log = fopen("/home/zhenxiao/X_Fuzz/decaf/trace_log", "a");
-						fprintf(trace_log, "Restore count: %d, branch count: %d, nested branch: %d\n", restore_count, branch_count, nested_branch);
-						fclose(trace_log);
-						//printf("Restore count: %d, branch count: %d, nested branch: %d\n", restore_count,branch_count, nested_branch);
-					}
-					//nested_branch = 0;
-					//branch_count = 0;
-					clear_tainted_bytes();
-					tainted_address = 0;
-					detector = 0;
-				}
-        return;
+		if(stack->top==0){
+			instruction_counter = 0;
+			force_execution_mode = 0;
+			//printf("clear tainted bytes\n");
+			//printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
+			if(++tmp_idx%10==0){
+				trace_log = fopen("/home/zhenxiao/X_Fuzz/decaf/trace_log", "a");
+				fprintf(trace_log, "Restore count: %d, branch count: %d, nested branch: %d\n", restore_count, branch_count, nested_branch);
+				fclose(trace_log);
+				//printf("Restore count: %d, branch count: %d, nested branch: %d\n", restore_count,branch_count, nested_branch);
+			}
+			//nested_branch = 0;
+			//branch_count = 0;
+			clear_tainted_bytes();
+			tainted_address = 0;
+			detector = 0;
+		}
+    return;
     }
 }
 //This is used to store the mem modification
@@ -197,7 +197,7 @@ int store_queue_add(store_queue *queue, target_ulong vaddr){
 		index %= 200;
 		if(queue->addr[index]==vaddr){
 			queue->count[index]++;
-			if(queue->count[index] > 5){
+			if(queue->count[index] > 25){
 				return 0;
 			} else {
 				return 1;

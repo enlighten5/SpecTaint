@@ -127,9 +127,9 @@ http://code.google.com/p/decaf-platform/
 #ifdef CONFIG_FORCE_EXECUTION
 {
     .name       = "enable_force_execution",
-    .args_type  = "",
-    .params     = "",
-    .help       = "Turn on taint tracking",
+    .args_type  = "upper:i,lower:i",
+    .params     = "upper lower",
+    .help       = "Turn on force_execution",
     .mhandler.cmd_new = do_enable_force_execution,
 },
 
@@ -137,7 +137,7 @@ http://code.google.com/p/decaf-platform/
     .name       = "disable_force_execution",
     .args_type  = "",
     .params     = "",
-    .help       = "Turn off taint tracking",
+    .help       = "Turn off force_execution",
     .mhandler.cmd_new = do_disable_force_execution,
 },
 #endif

@@ -6014,27 +6014,32 @@ int taint_flag = 1;
 int count = 0;
 void helper_DECAF_detect(target_ulong vaddr){
     if(tainted_address==vaddr){
-        //printf("detect addr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
-        detector++;
+        if (vaddr != 0)
+            printf("potential vulnerable load: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
+        /*detector++;
         if (detector==2)
         {
             detector = 0;
             printf("Spectre 1.0 detected at eip 0x%4x, depth %d\n", env->eip, eip_stack->top);
-        }   
+        } */  
     } 
 }
 void helper_DECAF_taint_mem(target_ulong vaddr, target_ulong reg){
     uint32_t taint = 0xffff;
-    if (reg == -1) {
+    if (vaddr > 0x10000000) {
         if(store_queue_add(tainted_address_q, vaddr)){
             //empty_taint_memory_page_table();
             //clear_tainted_bytes();
-            printf("taint vaddr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
+            //printf("taint vaddr: 0x%4x at eip: 0x%4x\n", vaddr, env->eip);
             taintcheck_taint_virtmem(vaddr, 4, &taint); 
         }
-    } else {
+    }
+    
+    if (reg >= 0 && reg <= 7) {
+        //printf("taint reg: %d at eip: 0x%4x\n", reg, env->eip);
         env->taint_regs[reg] = taint;
     }
+    
 }
 void helper_DECAF_check_taint(target_ulong val, target_ulong vaddr){
 
@@ -6046,20 +6051,34 @@ void helper_DECAF_check_taint(target_ulong val, target_ulong vaddr){
         }
     }
 }
-void helper_DECAF_check_taint2(target_ulong val, target_ulong addr){
-    //printf("check_taint2\n");
-    if(val==0x1){
-        printf("load from tainted address 0x%4x at eip 0x%4x, val: %d\n", addr, env->eip, val);
+void helper_DECAF_check_taint_store(target_ulong reg, target_ulong addr){
+    /*
+    uint8_t taint[8] = { 0 };
+    int i;
+    uint16_t ret = 0;
+    if (!taintcheck_check_virtmem(addr, 8, taint)) {
+        for (i = 0; i < 8; i++) {
+		    if (taint[i])
+			    ret |= 1 << i;
+	    }
+	    if(ret){
+            printf("potential store bypass at 0x%4x\n", env->eip);
+        }
+    }*/
+    if(tainted_address==addr){
+        if (addr != 0)
+            printf("potential vulnerable store: 0x%4x at eip: 0x%4x\n", addr, env->eip);
     }
-    
+
 }
 //extern target_ulong save_esp;
 void helper_DECAF_print(){
     //printf("before restore esp is: 0x%4x\n", env->regs[R_ESP]);
     uint32_t taint = 0xffff;
     //printf("Eax is 0x%4x at 0x%4x, esp: 0x%4x, ebp: 0x%4x\n", env->regs[R_EAX], env->eip, env->regs[R_ESP], env->regs[R_EBP]);
-    if(taint_tracking_enabled){
-        taintcheck_taint_virtmem(env->regs[R_EAX], 4, &taint);
-    }
+    //if(taint_tracking_enabled){
+    //    taintcheck_taint_virtmem(env->regs[R_EAX], 4, &taint);
+    //}
+    printf("env->eip is: 0x%4x\n", env->eip);
 }
 #endif

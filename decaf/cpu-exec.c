@@ -22,6 +22,7 @@
 #include "tcg.h"
 #include "qemu-barrier.h"
 #include "DECAF_main.h"
+#include "vmi_c_wrapper.h"
 
 #if defined(CONFIG_2nd_CCACHE) //sina
 	#define register_taint_status_check_interval 200
@@ -47,7 +48,7 @@ target_ulong saved_next_eip;
 target_ulong saved_val;
 target_ulong eip_after_as;
 
-int verbose = 1;
+int verbose = 0;
 
 saved_eip *eip_stack = NULL;
 store_log *st_log = NULL;
@@ -61,10 +62,13 @@ int branch_count = 0;
 int nested_branch = 0;
 int restore_count = 0;
 
+time_t original_time = 0;
+
 target_ulong upper_bound;
 target_ulong lower_bound;
 
 FILE *branch_log = NULL;
+FILE *op_log = NULL;
 FILE *trace = NULL;
 FILE *asan_report_log = NULL;
 int idx = 0;
@@ -291,8 +295,8 @@ int cpu_exec(CPUState *env)
 #endif
 
 #ifdef CONFIG_FORCE_EXECUTION
-    const char *program_name = "cross_func";
-    target_ulong global_idx = 0x80d9454;
+    const char *program_name = "mcf";
+    target_ulong global_idx = 0x80eca04;
     uint32_t taint_val = 0xffff;
     int pid;
     uint32_t target_cr3;
@@ -692,7 +696,7 @@ int cpu_exec(CPUState *env)
                     env->sr = (env->sr & 0xffe0)
                               | env->cc_dest | (env->cc_x << 4);
                     log_cpu_state(env, 0);
-#else
+#else   
                     log_cpu_state(env, 0);
 #endif
                 }
@@ -709,27 +713,28 @@ int cpu_exec(CPUState *env)
                     target_cr3 = VMI_find_cr3_by_pid_c(pid);
                     if(target_cr3 == env->cr[3]){
                         if(taint_tracking_enabled){
-                            taintcheck_taint_virtmem(global_idx, 4, &taint_val);
+                            //taintcheck_taint_virtmem(global_idx, 4, &taint_val);
                         }
                         target_env_eip = env->eip;
-                        
-                        //http
-                        if(target_env_eip>=0x804844d&&target_env_eip<0x804853e){
+                        //caffe-static
+                        /*if(target_env_eip>=0x08477030&&target_env_eip<0x08477120){
                             if(0){
                                 printf("in force range, cpu->eip 0x%4x, ebp: 0x%4x\n", env->eip, env->regs[R_EBP]);
                             }      
+                            //printf("_ZN5caffe6SolverIfE18UpdateSmoothedLossEfii\n");
                             is_force_range = 1;
-                        } else if (target_env_eip>=0x08048fac&&target_env_eip<=0x080492cb) {
-                            //responseheader and stuff
-                            is_force_range = 1;
-                        } else if (target_env_eip>=0x0804e7a0&&target_env_eip<0x805859a) {
-                            is_force_range = 1;
-                        } else if (target_env_eip>=0x0805b88a&&target_env_eip<0x806072d) {
-                            is_force_range = 1;
-                        } else if (target_env_eip>=0x08060af0&&target_env_eip<0x8062040) {                            
+                        } else if(target_env_eip>=0x08477880&&target_env_eip<0x008477980)
+                        {
+                            //printf("_ZN5caffe6SolverIdE18UpdateSmoothedLossEdii\n");
                             is_force_range = 1;
                         }
+                        
                         else {
+                            is_force_range = 0;
+                        }*/
+                        if(target_env_eip>=upper_bound&&target_env_eip<lower_bound){
+                            is_force_range = 1;
+                        } else {
                             is_force_range = 0;
                         }
                         
@@ -748,22 +753,11 @@ int cpu_exec(CPUState *env)
                         } else {
                             is_exception_range = 0;
                         }
-                        if(0&&target_env_eip==0x8057690){
-                            if(force_execution_mode){
-                                printf("Do not report SEGV error\n");
-                                restore_flag = 1;
-                                goto restore_state;
-                            } else
-                            {
-                                printf("cannot handle sigsegv\n");
-                            }
-                            
-                        }
-                           
+                        // This logic is used to handle the situation where one program finish running, by hooking the exit function. 
                         //http    
-                        if(target_env_eip>=0x80482b4&&target_env_eip<=0x8048597){
+                        if(target_env_eip>=0x8048000&&target_env_eip<=0x80eddd8){
                             //http    
-                            if(target_env_eip>=0x0806228d&&target_env_eip<=0x08062297){    
+                            if(target_env_eip>=0x08050650&&target_env_eip<=0x0805066a){    
                                 /*branch_log = fopen("/home/zhenxiao/X_Fuzz/decaf/branch_log", "a");
                                 fprintf(branch_log, "\n-----------seed: %d end------------\n\n\n", idx);
                                 fclose(branch_log);
@@ -772,7 +766,7 @@ int cpu_exec(CPUState *env)
 						        fprintf(trace, "\n-----------seed: %d end------------\n\n\n", idx);
 						        fclose(trace);
                                 idx++;*/
-
+                                printf("Time past: %d, branch count: %d, nested branch count: %d\n", time(0) - original_time, branch_count ,nested_branch);
                                 //restore_count = 0;
                                 //branch_count = 0;
                                 //nested_branch = 0;
@@ -798,9 +792,12 @@ int cpu_exec(CPUState *env)
 
 				
                 tb = tb_find_fast(env);
-                if(is_force_range){
+                if(is_force_range&0){
                     //printf("print tcg_ctx at 0x%4x\n", env->eip);
-                    //tcg_print_ops(&tcg_ctx);
+                    op_log = fopen("/home/zhenxiao/X_Fuzz/decaf/op_log", "a");
+                    fprintf(op_log, "tcg_ctx at 0x%4x\n", env->eip);
+                    tcg_dump_ops(&tcg_ctx, op_log);
+                    fclose(op_log);
                 }
                 /* Note: we do it here to avoid a gcc bug on Mac OS X when
                    doing it in tb_find_slow */
@@ -890,7 +887,8 @@ int cpu_exec(CPUState *env)
                     int log_index;
                     popeip(eip_stack, env, &log_index);
                     //FIXME restore mem
-                    for(int i=st_log->top-1;i>=log_index;i--){
+                    int i;
+                    for(i = st_log->top-1; i >= log_index; i--){
                         uint32_t tmp_val = st_log->val[i];
                         DECAF_write_mem(env, st_log->addr[i], 4, &tmp_val);
                         if(0){
@@ -915,14 +913,14 @@ int cpu_exec(CPUState *env)
                     log_id = st_log->top;
                     if(env_eip == saved_next_eip){
                         if(verbose){
-                            printf("long jump to: 0x%4x\n", saved_val);
+                            printf("long jump to val: 0x%4x\n", saved_val);
                         }
                         env->eip = saved_val;
                         pusheip(eip_stack, saved_next_eip, tmp_env, log_id);
                        
                     } else if(env_eip == saved_val){
                         if(verbose){
-                            printf("long jump to: 0x%4x\n", saved_next_eip);
+                            printf("long jump to next_eip: 0x%4x\n", saved_next_eip);
                         }
                         env->eip = saved_next_eip;
                         pusheip(eip_stack, saved_val, tmp_env, log_id);

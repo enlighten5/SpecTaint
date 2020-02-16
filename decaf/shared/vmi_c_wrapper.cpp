@@ -89,8 +89,8 @@ int VMI_locate_module_byname_c(const char *name, uint32_t pid,tmodinfo_t * tm)
 	gva_t base = 0;
 
 	if (!tm) {
-		DECAF_printf("tm is NULL\n");
-		return -1;
+		//DECAF_printf("tm is NULL\n");
+		//return -1;
 	}
     p = VMI_find_process_by_pid(pid);
     if(!p)

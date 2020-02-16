@@ -623,7 +623,9 @@ static inline void gen_op_ld_T1_A0(int idx)
 static inline void gen_op_st_v(int idx, TCGv t0, TCGv a0)
 {
     int mem_index = (idx >> 2) - 1;
-    
+    if (force_execution_mode && taint_tracking_enabled) {
+        gen_helper_DECAF_check_taint_store(0, a0);
+    }
     switch(idx & 3) {
     case 0:
         if(is_program_range&&force_execution_mode){
@@ -1674,10 +1676,10 @@ static void gen_op(DisasContext *s1, int op, int ot, int d)
         break;
     case OP_CMPL:
         if(is_force_range&&taint_tracking_enabled){  
-            if (d <= 7) {
-                //gen_helper_DECAF_taint_mem(0, d);
-            } else if(d==OR_TMP0){
-                //gen_helper_DECAF_taint_mem(cpu_A0, -1);
+            if (d != OR_TMP0) {
+                gen_helper_DECAF_taint_mem(-1, d);
+            } else {
+                gen_helper_DECAF_taint_mem(cpu_A0, -1);
             }
         }
         gen_op_cmpl_T0_T1_cc();
@@ -2650,7 +2652,7 @@ static inline void gen_jcc(DisasContext *s, int b,
     TCGv cond = -1;
     cc_op = s->cc_op;
     gen_update_cc_op(s);
-    time_t original_time = 0;
+    //time_t original_time = 0;
     if (s->jmp_opt) {
         l1 = gen_new_label();
         gen_jcc1_cond(s, cc_op, b, l1, &cond);
@@ -2663,28 +2665,27 @@ static inline void gen_jcc(DisasContext *s, int b,
             //if(cond==TCG_COND_GE||cond==TCG_COND_GEU){
             if(cond > TCG_COND_NE && cond <= TCG_COND_GTU){    
                 if(store_queue_add(forced_branch, s->tb->pc)){
-                    printf("Flip branch %d at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
-                    //branch_count++;
+                //if(1){
+                    //printf("Flip branch %d at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
                     saved_next_eip = next_eip;
                     saved_val = val;
                     force_flag = 1; 
                     if(force_execution_mode){
                         //how many nested branch in speculative execution
                         nested_branch++;
-                        //printf("Flip branch %d in transient mode at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
                     } else {
                         //how many branch encountered during normal execuiton
                         branch_count++;
-                        //printf("Flip branch %d at pc: 0x%4x, next_eip: 0x%4x, val: 0x%4x\n", cond, s->tb->pc, next_eip, val);
                         //printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
                     
                     }
                     if(branch_count == 1){
                         original_time = time(0);
                     }
+                    /*
                     if(branch_count % 10 == 0){
-                        printf("Time past: %d, nested count: %d\n", time(0) - original_time, nested_branch);
-                    }
+                        printf("Time past: %d, branch count: %d, nested branch count: %d\n", time(0) - original_time, branch_count ,nested_branch);
+                    }*/
                     //printf("branch count: %d, nested branch: %d\n", branch_count, nested_branch);
                 }
             }
@@ -6661,9 +6662,10 @@ static target_ulong disas_insn(DisasContext *s, target_ulong pc_start)
             //longjmp(cpu_single_env->jmp_env, 1);
             
         }
+        /*
         if(is_force_range){
-            //printf("branch count: %d, nested branch: %d, pc: 0x%4x\n", branch_count, nested_branch, s->tb->pc);
-        }
+            printf("branch count: %d, nested branch: %d, pc: 0x%4x\n", branch_count, nested_branch, s->tb->pc);
+        }*/
         break;
     case 0xca: /* lret im */
         val = ldsw_code(s->pc);
@@ -8611,7 +8613,7 @@ static inline void gen_intermediate_code_internal(CPUState *env,
                 if (taint_tracking_enabled)
                     lj = optimize_taint(search_pc);
 #endif /* CONFIG_TCG_TAINT */
-                if(0)
+                if(verbose)
                     printf("exceed SEW at 0x%4x, set restore flag\n", pc_ptr);
                 restore_flag = 1;
                 gen_eob(dc);

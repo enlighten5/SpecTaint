@@ -814,6 +814,7 @@ extern FILE *asan_report_log;
 extern int branch_count;
 extern int nested_branch;
 extern int restore_count;
+extern time_t original_time;
 #endif
 
 CPUX86State *cpu_x86_init(const char *cpu_model);

@@ -28,6 +28,7 @@
 #define CONFIG_BDRV_WHITELIST \
     NULL
 #define CONFIG_VNC 1
+#define CONFIG_VNC_SASL 1
 #define CONFIG_VNC_PNG 1
 #define CONFIG_FNMATCH 1
 #define QEMU_VERSION "1.0"
@@ -50,6 +51,7 @@
 #define CONFIG_INOTIFY 1
 #define CONFIG_INOTIFY1 1
 #define CONFIG_BYTESWAP_H 1
+#define CONFIG_CURL 1
 #define CONFIG_ATTR 1
 #define CONFIG_VIRTFS 1
 #define CONFIG_IOVEC 1

@@ -964,7 +964,9 @@ static inline int gen_taintcheck_insn(int search_pc)
 
             if (taint_store_pointers_enabled) {
               if (arg1) {
-
+                //if(force_execution_mode){
+                  //printf("tainted store destination\n");
+                //}
 #if (TCG_TARGET_REG_BITS == 64)
                 t0 = tcg_temp_new_i64();
                 t1 = tcg_temp_new_i64();

@@ -1,0 +1,7 @@
+  GEN   trace.h
+  GEN   qemu-options.def
+  GEN   /home/zhenxiao/X_Fuzz/decaf/qapi-generated/qga-qapi-types.h
+  GEN   /home/zhenxiao/X_Fuzz/decaf/qapi-generated/qga-qapi-visit.h
+  GEN   /home/zhenxiao/X_Fuzz/decaf/qapi-generated/qga-qmp-commands.h
+  CC    qemu-ga.o
+/home/zhenxiao/X_Fuzz/decaf/rules.mak:19: recipe for target 'qemu-ga.o' failed

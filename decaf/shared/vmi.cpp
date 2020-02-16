@@ -244,6 +244,7 @@ module * VMI_find_module_by_name(const char *name, target_ulong pgd, target_ulon
 	unordered_map< uint32_t, module * >::iterator iter;
 	for (iter = proc->module_list.begin(); iter != proc->module_list.end(); iter++) {
 		module *mod = iter->second;
+		//printf("list module name %s\n", mod->name);
 		if (strcasecmp(mod->name, name) == 0) {
 			*base = iter->first;
 			return mod;
